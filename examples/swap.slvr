@@ -1,0 +1,124 @@
+; The Slvr Programming Language - Automated Market Maker (AMM) Swap Contract
+; A simple Uniswap-like constant product AMM
+
+(module amm
+  "Automated Market Maker for token swaps"
+
+  ; Schema for liquidity pools
+  (defschema pool-schema
+    "Liquidity pool information"
+    token-a:integer
+    token-b:integer
+    total-shares:integer)
+
+  ; Schema for user liquidity positions
+  (defschema position-schema
+    "User liquidity position"
+    shares:integer
+    user:string)
+
+  ; Table for pools
+  (deftable pools:{pool-schema}
+    "Liquidity pools")
+
+  ; Table for user positions
+  (deftable positions:{position-schema}
+    "User liquidity positions")
+
+  ; Constant product formula: x * y = k
+  (defun get-output (input:integer reserve-in:integer reserve-out:integer)
+    "Calculate output amount using constant product formula"
+    (let k (* reserve-in reserve-out)
+      (let new-reserve-in (+ reserve-in input)
+        (let new-reserve-out (/ k new-reserve-in)
+          (- reserve-out new-reserve-out)))))
+
+  ; Create a new liquidity pool
+  (defun create-pool (pool-id:string token-a:integer token-b:integer)
+    "Create a new liquidity pool"
+    (write pools pool-id
+      {token-a: token-a token-b: token-b total-shares: 1000}))
+
+  ; Add liquidity to pool
+  (defun add-liquidity (pool-id:string user:string amount-a:integer amount-b:integer)
+    "Add liquidity to pool"
+    (let pool (read pools pool-id)
+      (let token-a (at "token-a" pool)
+      (let token-b (at "token-b" pool)
+      (let total-shares (at "total-shares" pool)
+        (let shares (/ (* amount-a total-shares) token-a)
+          (do
+            ; Update pool
+            (update pools pool-id
+              {token-a: (+ token-a amount-a)
+               token-b: (+ token-b amount-b)
+               total-shares: (+ total-shares shares)})
+            ; Record user position
+            (let position-key (++ pool-id ":" user)
+              (write positions position-key
+                {shares: shares user: user}))
+            shares)))))))
+
+  ; Remove liquidity from pool
+  (defun remove-liquidity (pool-id:string user:string shares:integer)
+    "Remove liquidity from pool"
+    (let pool (read pools pool-id)
+      (let token-a (at "token-a" pool)
+      (let token-b (at "token-b" pool)
+      (let total-shares (at "total-shares" pool)
+        (let amount-a (/ (* shares token-a) total-shares)
+        (let amount-b (/ (* shares token-b) total-shares)
+          (do
+            ; Update pool
+            (update pools pool-id
+              {token-a: (- token-a amount-a)
+               token-b: (- token-b amount-b)
+               total-shares: (- total-shares shares)})
+            ; Remove user position
+            (let position-key (++ pool-id ":" user)
+              (delete positions position-key))
+            [amount-a amount-b])))))))
+
+  ; Swap token A for token B
+  (defun swap-a-for-b (pool-id:string amount-in:integer)
+    "Swap token A for token B"
+    (let pool (read pools pool-id)
+      (let token-a (at "token-a" pool)
+      (let token-b (at "token-b" pool)
+        (let amount-out (get-output amount-in token-a token-b)
+          (do
+            ; Update pool
+            (update pools pool-id
+              {token-a: (+ token-a amount-in)
+               token-b: (- token-b amount-out)})
+            amount-out))))))
+
+  ; Swap token B for token A
+  (defun swap-b-for-a (pool-id:string amount-in:integer)
+    "Swap token B for token A"
+    (let pool (read pools pool-id)
+      (let token-a (at "token-a" pool)
+      (let token-b (at "token-b" pool)
+        (let amount-out (get-output amount-in token-b token-a)
+          (do
+            ; Update pool
+            (update pools pool-id
+              {token-a: (- token-a amount-out)
+               token-b: (+ token-b amount-in)})
+            amount-out))))))
+
+  ; Get pool reserves
+  (defun get-reserves (pool-id:string)
+    "Get pool reserves"
+    (let pool (read pools pool-id)
+      [(at "token-a" pool) (at "token-b" pool)]))
+
+  ; Get user position
+  (defun get-position (pool-id:string user:string)
+    "Get user liquidity position"
+    (let position-key (++ pool-id ":" user)
+      (let position (read positions position-key)
+        (if (null position)
+          0
+          (at "shares" position)))))
+)

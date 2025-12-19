@@ -6,7 +6,7 @@ use crate::bytecode::{Bytecode, Instruction};
 use crate::error::{SlvrError, SlvrResult};
 use crate::runtime::Runtime;
 use crate::value::Value;
-use indexmap::IndexMap;
+
 use std::collections::HashMap;
 
 /// Virtual Machine for Slvr bytecode execution
@@ -69,24 +69,12 @@ impl VirtualMachine {
     fn execute_instruction(&mut self, instruction: &Instruction) -> SlvrResult<()> {
         match instruction {
             // Stack operations
-            Instruction::PushInt(n) => {
-                self.stack.push(Value::Integer(*n));
-            }
-            Instruction::PushDecimal(d) => {
-                self.stack.push(Value::Decimal(*d));
-            }
-            Instruction::PushString(s) => {
-                self.stack.push(Value::String(s.clone()));
-            }
-            Instruction::PushBool(b) => {
-                self.stack.push(Value::Boolean(*b));
-            }
-            Instruction::PushUnit => {
-                self.stack.push(Value::Unit);
-            }
-            Instruction::PushNull => {
-                self.stack.push(Value::Null);
-            }
+            Instruction::PushInt(n) => self.stack.push(Value::Integer(*n)),
+            Instruction::PushDecimal(d) => self.stack.push(Value::Decimal(*d)),
+            Instruction::PushString(s) => self.stack.push(Value::String(s.clone())),
+            Instruction::PushBool(b) => self.stack.push(Value::Boolean(*b)),
+            Instruction::PushUnit => self.stack.push(Value::Unit),
+            Instruction::PushNull => self.stack.push(Value::Null),
             Instruction::Pop => {
                 if self.stack.is_empty() {
                     return Err(SlvrError::runtime("Stack underflow"));
@@ -102,12 +90,42 @@ impl VirtualMachine {
             }
 
             // Arithmetic operations
-            Instruction::Add => self.binary_op(|a, b| self.add_values(a, b))?,
-            Instruction::Subtract => self.binary_op(|a, b| self.subtract_values(a, b))?,
-            Instruction::Multiply => self.binary_op(|a, b| self.multiply_values(a, b))?,
-            Instruction::Divide => self.binary_op(|a, b| self.divide_values(a, b))?,
-            Instruction::Modulo => self.binary_op(|a, b| self.modulo_values(a, b))?,
-            Instruction::Power => self.binary_op(|a, b| self.power_values(a, b))?,
+            Instruction::Add => {
+                let b = self.pop_stack()?;
+                let a = self.pop_stack()?;
+                let result = Self::add_values(a, b)?;
+                self.stack.push(result);
+            }
+            Instruction::Subtract => {
+                let b = self.pop_stack()?;
+                let a = self.pop_stack()?;
+                let result = Self::subtract_values(a, b)?;
+                self.stack.push(result);
+            }
+            Instruction::Multiply => {
+                let b = self.pop_stack()?;
+                let a = self.pop_stack()?;
+                let result = Self::multiply_values(a, b)?;
+                self.stack.push(result);
+            }
+            Instruction::Divide => {
+                let b = self.pop_stack()?;
+                let a = self.pop_stack()?;
+                let result = Self::divide_values(a, b)?;
+                self.stack.push(result);
+            }
+            Instruction::Modulo => {
+                let b = self.pop_stack()?;
+                let a = self.pop_stack()?;
+                let result = Self::modulo_values(a, b)?;
+                self.stack.push(result);
+            }
+            Instruction::Power => {
+                let b = self.pop_stack()?;
+                let a = self.pop_stack()?;
+                let result = Self::power_values(a, b)?;
+                self.stack.push(result);
+            }
             Instruction::Negate => {
                 let val = self.pop_stack()?;
                 match val {
@@ -131,22 +149,22 @@ impl VirtualMachine {
             Instruction::Less => {
                 let b = self.pop_stack()?;
                 let a = self.pop_stack()?;
-                self.stack.push(Value::Boolean(self.compare_values(&a, &b)? < 0));
+                self.stack.push(Value::Boolean(Self::compare_values(&a, &b)? < 0));
             }
             Instruction::LessEqual => {
                 let b = self.pop_stack()?;
                 let a = self.pop_stack()?;
-                self.stack.push(Value::Boolean(self.compare_values(&a, &b)? <= 0));
+                self.stack.push(Value::Boolean(Self::compare_values(&a, &b)? <= 0));
             }
             Instruction::Greater => {
                 let b = self.pop_stack()?;
                 let a = self.pop_stack()?;
-                self.stack.push(Value::Boolean(self.compare_values(&a, &b)? > 0));
+                self.stack.push(Value::Boolean(Self::compare_values(&a, &b)? > 0));
             }
             Instruction::GreaterEqual => {
                 let b = self.pop_stack()?;
                 let a = self.pop_stack()?;
-                self.stack.push(Value::Boolean(self.compare_values(&a, &b)? >= 0));
+                self.stack.push(Value::Boolean(Self::compare_values(&a, &b)? >= 0));
             }
 
             // Logical operations
@@ -175,9 +193,7 @@ impl VirtualMachine {
             }
 
             // Control flow
-            Instruction::Jump(addr) => {
-                self.ip = *addr - 1; // -1 because ip will be incremented
-            }
+            Instruction::Jump(addr) => self.ip = *addr - 1,
             Instruction::JumpIfFalse(addr) => {
                 let val = self.pop_stack()?;
                 if !val.is_truthy() {
@@ -194,7 +210,6 @@ impl VirtualMachine {
                 if !self.call_stack.is_empty() {
                     self.call_stack.pop();
                 }
-                // Return value stays on stack
             }
 
             // Variable operations
@@ -241,7 +256,7 @@ impl VirtualMachine {
                 self.stack.push(Value::List(list));
             }
             Instruction::MakeObject(len) => {
-                let mut obj = IndexMap::new();
+                let mut obj = std::collections::HashMap::new();
                 for _ in 0..*len {
                     let val = self.pop_stack()?;
                     let key = self.pop_stack()?.to_string_value()?;
@@ -319,8 +334,7 @@ impl VirtualMachine {
                 self.stack.push(Value::String(val.type_name().to_string()));
             }
             Instruction::Cast(_ty) => {
-                // Type casting - for now just keep value as is
-                // Real implementation would convert types
+                // Type casting - keep value as is
             }
 
             // Error handling
@@ -345,18 +359,7 @@ impl VirtualMachine {
         self.stack.pop().ok_or_else(|| SlvrError::runtime("Stack underflow"))
     }
 
-    fn binary_op<F>(&mut self, op: F) -> SlvrResult<()>
-    where
-        F: Fn(Value, Value) -> SlvrResult<Value>,
-    {
-        let b = self.pop_stack()?;
-        let a = self.pop_stack()?;
-        let result = op(a, b)?;
-        self.stack.push(result);
-        Ok(())
-    }
-
-    fn add_values(&self, a: Value, b: Value) -> SlvrResult<Value> {
+    fn add_values(a: Value, b: Value) -> SlvrResult<Value> {
         match (a, b) {
             (Value::Integer(x), Value::Integer(y)) => Ok(Value::Integer(x + y)),
             (Value::Decimal(x), Value::Decimal(y)) => Ok(Value::Decimal(x + y)),
@@ -366,7 +369,7 @@ impl VirtualMachine {
         }
     }
 
-    fn subtract_values(&self, a: Value, b: Value) -> SlvrResult<Value> {
+    fn subtract_values(a: Value, b: Value) -> SlvrResult<Value> {
         match (a, b) {
             (Value::Integer(x), Value::Integer(y)) => Ok(Value::Integer(x - y)),
             (Value::Decimal(x), Value::Decimal(y)) => Ok(Value::Decimal(x - y)),
@@ -376,7 +379,7 @@ impl VirtualMachine {
         }
     }
 
-    fn multiply_values(&self, a: Value, b: Value) -> SlvrResult<Value> {
+    fn multiply_values(a: Value, b: Value) -> SlvrResult<Value> {
         match (a, b) {
             (Value::Integer(x), Value::Integer(y)) => Ok(Value::Integer(x * y)),
             (Value::Decimal(x), Value::Decimal(y)) => Ok(Value::Decimal(x * y)),
@@ -386,7 +389,7 @@ impl VirtualMachine {
         }
     }
 
-    fn divide_values(&self, a: Value, b: Value) -> SlvrResult<Value> {
+    fn divide_values(a: Value, b: Value) -> SlvrResult<Value> {
         match (a, b) {
             (Value::Integer(x), Value::Integer(y)) => {
                 if y == 0 {
@@ -420,7 +423,7 @@ impl VirtualMachine {
         }
     }
 
-    fn modulo_values(&self, a: Value, b: Value) -> SlvrResult<Value> {
+    fn modulo_values(a: Value, b: Value) -> SlvrResult<Value> {
         match (a, b) {
             (Value::Integer(x), Value::Integer(y)) => {
                 if y == 0 {
@@ -433,7 +436,7 @@ impl VirtualMachine {
         }
     }
 
-    fn power_values(&self, a: Value, b: Value) -> SlvrResult<Value> {
+    fn power_values(a: Value, b: Value) -> SlvrResult<Value> {
         match (a, b) {
             (Value::Integer(x), Value::Integer(y)) => {
                 if y < 0 {
@@ -449,7 +452,7 @@ impl VirtualMachine {
         }
     }
 
-    fn compare_values(&self, a: &Value, b: &Value) -> SlvrResult<i32> {
+    fn compare_values(a: &Value, b: &Value) -> SlvrResult<i32> {
         match (a, b) {
             (Value::Integer(x), Value::Integer(y)) => Ok(if x < y { -1 } else if x > y { 1 } else { 0 }),
             (Value::Decimal(x), Value::Decimal(y)) => Ok(if x < y { -1 } else if x > y { 1 } else { 0 }),

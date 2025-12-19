@@ -1,0 +1,111 @@
+; The Slvr Programming Language - Token Contract Example
+; A complete ERC20-like token implementation
+
+(module token
+  "A complete token contract with transfer, approve, and balance tracking"
+
+  ; Schema for account balances
+  (defschema account-schema
+    "Account information"
+    balance:integer
+    owner:string)
+
+  ; Schema for allowances (approvals)
+  (defschema allowance-schema
+    "Allowance information"
+    amount:integer
+    spender:string
+    owner:string)
+
+  ; Table for storing account balances
+  (deftable accounts:{account-schema}
+    "Account balances table")
+
+  ; Table for storing allowances
+  (deftable allowances:{allowance-schema}
+    "Allowances table")
+
+  ; Total supply constant
+  (defconst TOTAL_SUPPLY 1000000)
+
+  ; Initialize token with initial supply
+  (defun init (owner:string)
+    "Initialize token with total supply to owner"
+    (write accounts owner
+      {balance: TOTAL_SUPPLY owner: owner}))
+
+  ; Get balance of an account
+  (defun balance-of (account:string)
+    "Get balance of account"
+    (let account-data (read accounts account)
+      (if (null account-data)
+        0
+        (at "balance" account-data))))
+
+  ; Transfer tokens from caller to recipient
+  (defun transfer (from:string to:string amount:integer)
+    "Transfer tokens from one account to another"
+    (let from-balance (balance-of from)
+      (if (>= from-balance amount)
+        (do
+          ; Deduct from sender
+          (update accounts from
+            {balance: (- from-balance amount)})
+          ; Add to recipient
+          (let to-balance (balance-of to)
+            (update accounts to
+              {balance: (+ to-balance amount)}))
+          true)
+        false)))
+
+  ; Approve spender to spend tokens on behalf of owner
+  (defun approve (owner:string spender:string amount:integer)
+    "Approve spender to spend tokens"
+    (let allowance-key (++ owner ":" spender)
+      (write allowances allowance-key
+        {amount: amount spender: spender owner: owner})))
+
+  ; Get allowance for spender
+  (defun allowance (owner:string spender:string)
+    "Get allowance for spender"
+    (let allowance-key (++ owner ":" spender)
+      (let allowance-data (read allowances allowance-key)
+        (if (null allowance-data)
+          0
+          (at "amount" allowance-data)))))
+
+  ; Transfer tokens on behalf of owner (using allowance)
+  (defun transfer-from (owner:string spender:string to:string amount:integer)
+    "Transfer tokens on behalf of owner"
+    (let current-allowance (allowance owner spender)
+      (if (>= current-allowance amount)
+        (do
+          ; Update allowance
+          (approve owner spender (- current-allowance amount))
+          ; Transfer tokens
+          (transfer owner to amount))
+        false)))
+
+  ; Burn tokens (remove from circulation)
+  (defun burn (account:string amount:integer)
+    "Burn tokens from account"
+    (let account-balance (balance-of account)
+      (if (>= account-balance amount)
+        (do
+          (update accounts account
+            {balance: (- account-balance amount)})
+          true)
+        false)))
+
+  ; Mint new tokens (only for owner)
+  (defun mint (account:string amount:integer)
+    "Mint new tokens to account"
+    (let account-balance (balance-of account)
+      (update accounts account
+        {balance: (+ account-balance amount)})))
+
+  ; Get total supply
+  (defun total-supply ()
+    "Get total supply"
+    TOTAL_SUPPLY)
+)

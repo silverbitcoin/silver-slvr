@@ -5,7 +5,6 @@
 //! safe execution on the blockchain.
 
 use crate::error::{SlvrError, SlvrResult};
-use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -24,7 +23,7 @@ pub enum Type {
     /// List type with element type
     List(Box<Type>),
     /// Object/map type with field types
-    Object(IndexMap<String, Type>),
+    Object(HashMap<String, Type>),
     /// Function type: (arg_types) -> return_type
     Function(Vec<Type>, Box<Type>),
     /// Unit type (void)
@@ -36,7 +35,7 @@ pub enum Type {
     /// Table type for database operations
     Table(Box<Type>),
     /// Schema type for table definitions
-    Schema(IndexMap<String, Type>),
+    Schema(HashMap<String, Type>),
 }
 
 impl std::hash::Hash for Type {
@@ -279,7 +278,7 @@ mod tests {
         assert!(!Type::List(Box::new(Type::Integer)).is_comparable());
 
         assert!(Type::List(Box::new(Type::Integer)).is_collection());
-        assert!(Type::Object(IndexMap::new()).is_collection());
+        assert!(Type::Object(HashMap::new()).is_collection());
     }
 
     #[test]

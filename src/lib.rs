@@ -59,6 +59,25 @@ pub mod runtime;
 pub mod types;
 pub mod value;
 pub mod vm;
+pub mod stdlib;
+pub mod keyset;
+pub mod query;
+pub mod transaction;
+pub mod api;
+pub mod verification;
+pub mod defpact;
+pub mod defcap;
+pub mod upgrades;
+pub mod modules;
+pub mod testing;
+pub mod blockchain_api;
+pub mod smartcontract_api;
+pub mod account_api;
+pub mod api_handler;
+pub mod lsp;
+pub mod debugger;
+pub mod profiler;
+pub mod chainweb;
 
 pub use compiler::Compiler;
 pub use error::{SlvrError, SlvrResult};
@@ -69,6 +88,10 @@ pub use runtime::Runtime;
 pub use types::{Type, TypeEnv};
 pub use value::Value;
 pub use vm::VirtualMachine;
+pub use lsp::LspServer;
+pub use debugger::Debugger;
+pub use profiler::Profiler;
+pub use chainweb::ChainwebNetwork;
 
 /// The version of the Slvr language
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

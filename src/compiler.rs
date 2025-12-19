@@ -6,7 +6,7 @@ use crate::ast::{Definition, Expr, Literal, BinOp, UnaryOp, Program};
 use crate::bytecode::{Bytecode, Instruction, FunctionDef};
 use crate::error::{SlvrError, SlvrResult};
 use crate::types::TypeEnv;
-use indexmap::IndexMap;
+
 use std::collections::HashMap;
 
 /// Compiler for Slvr language
@@ -50,7 +50,7 @@ impl Compiler {
 
     fn collect_definition(&mut self, def: &Definition) -> SlvrResult<()> {
         match def {
-            Definition::Module { name, body, .. } => {
+            Definition::Module { body, .. } => {
                 self.type_env.push_scope();
                 for inner_def in body {
                     self.collect_definition(inner_def)?;
@@ -58,7 +58,7 @@ impl Compiler {
                 self.type_env.pop_scope()?;
             }
             Definition::Function { name, params, return_type, .. } => {
-                let param_types: Vec<Type> = params.iter().map(|(_, ty)| {
+                let param_types: Vec<crate::types::Type> = params.iter().map(|(_, ty)| {
                     self.ast_type_to_type(ty)
                 }).collect::<SlvrResult<Vec<_>>>()?;
                 
@@ -69,18 +69,18 @@ impl Compiler {
                 );
             }
             Definition::Schema { name, fields, .. } => {
-                let mut field_types = IndexMap::new();
+                let mut field_types = HashMap::new();
                 for (field_name, field_type) in fields {
                     field_types.insert(field_name.clone(), self.ast_type_to_type(field_type)?);
                 }
                 self.type_env.define_custom_type(
                     name.clone(),
-                    Type::Schema(field_types),
+                    crate::types::Type::Schema(field_types),
                 );
             }
             Definition::Table { name, schema, .. } => {
                 if let Some(schema_type) = self.type_env.lookup_custom_type(schema) {
-                    self.type_env.define_table(name.clone(), Type::Table(Box::new(schema_type)));
+                    self.type_env.define_table(name.clone(), crate::types::Type::Table(Box::new(schema_type)));
                 } else {
                     return Err(SlvrError::type_error(format!("Schema not found: {}", schema)));
                 }
@@ -94,7 +94,7 @@ impl Compiler {
 
     fn compile_definition(&mut self, def: &Definition, bytecode: &mut Bytecode) -> SlvrResult<()> {
         match def {
-            Definition::Module { name, body, .. } => {
+            Definition::Module { body, .. } => {
                 self.type_env.push_scope();
                 self.current_scope_depth += 1;
                 
@@ -226,20 +226,23 @@ impl Compiler {
                     bytecode.push(Instruction::Jump(0)); // Placeholder
                     
                     // Patch jump_else
+                    let else_target = bytecode.len();
                     if let Instruction::JumpIfFalse(ref mut target) = &mut bytecode.instructions[jump_else] {
-                        *target = bytecode.len();
+                        *target = else_target;
                     }
                     
                     self.compile_expr(else_expr, bytecode)?;
                     
                     // Patch jump_end
+                    let end_target = bytecode.len();
                     if let Instruction::Jump(ref mut target) = &mut bytecode.instructions[jump_end] {
-                        *target = bytecode.len();
+                        *target = end_target;
                     }
                 } else {
                     // Patch jump_else
+                    let else_target = bytecode.len();
                     if let Instruction::JumpIfFalse(ref mut target) = &mut bytecode.instructions[jump_else] {
-                        *target = bytecode.len();
+                        *target = else_target;
                     }
                 }
             }
@@ -319,7 +322,7 @@ impl Compiler {
         while i < bytecode.instructions.len() {
             match &bytecode.instructions[i] {
                 // Remove consecutive duplicate pushes
-                Instruction::PushInt(n) if i + 1 < bytecode.instructions.len() => {
+                Instruction::PushInt(_) if i + 1 < bytecode.instructions.len() => {
                     if let Instruction::Pop = bytecode.instructions[i + 1] {
                         i += 2;
                         continue;
@@ -343,7 +346,7 @@ impl Compiler {
             crate::ast::Type::List(inner) => {
                 crate::types::Type::List(Box::new(self.ast_type_to_type(inner)?))
             }
-            crate::ast::Type::Object => crate::types::Type::Object(IndexMap::new()),
+            crate::ast::Type::Object => crate::types::Type::Object(HashMap::new()),
             crate::ast::Type::Custom(name) => crate::types::Type::Custom(name.clone()),
             crate::ast::Type::Unit => crate::types::Type::Unit,
         })

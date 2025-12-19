@@ -3,8 +3,9 @@
 //! Represents values that can be computed and stored during execution.
 
 use crate::error::{SlvrError, SlvrResult};
-use indexmap::IndexMap;
+
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fmt;
 
 /// A runtime value in the Slvr language
@@ -21,7 +22,7 @@ pub enum Value {
     /// List value
     List(Vec<Value>),
     /// Object/map value
-    Object(IndexMap<String, Value>),
+    Object(HashMap<String, Value>),
     /// Unit value
     Unit,
     /// Null value
@@ -47,7 +48,9 @@ impl fmt::Display for Value {
             }
             Value::Object(map) => {
                 write!(f, "{{")?;
-                for (i, (k, v)) in map.iter().enumerate() {
+                let mut items: Vec<_> = map.iter().collect();
+                items.sort_by_key(|(k, _)| k.as_str());
+                for (i, (k, v)) in items.iter().enumerate() {
                     if i > 0 {
                         write!(f, ", ")?;
                     }
@@ -271,7 +274,7 @@ mod tests {
 
     #[test]
     fn test_object_operations() {
-        let mut obj = Value::Object(IndexMap::new());
+        let mut obj = Value::Object(HashMap::new());
         obj.set_field("name".to_string(), Value::String("Alice".to_string()))
             .unwrap();
 

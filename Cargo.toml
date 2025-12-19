@@ -7,7 +7,7 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "The Slvr Programming Language - Turing-incomplete smart contract language for SilverBitcoin blockchain"
-keywords = ["blockchain", "smart-contracts", "language", "slvr", "pact"]
+keywords = ["blockchain", "smart-contracts", "language", "slvr"]
 categories = ["development-tools", "compilers"]
 
 [dependencies]
@@ -32,9 +32,12 @@ nom = "7.1"
 regex = "1.10"
 indexmap = "2.0"
 smallvec = "1.11"
+uuid = { version = "1.6", features = ["v4", "serde"] }
 
 # Cryptography
 ed25519-dalek = { workspace = true }
+hmac = "0.12"
+rand = "0.8"
 
 # Error handling
 anyhow = "1.0"

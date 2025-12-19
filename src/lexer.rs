@@ -275,6 +275,7 @@ impl Lexer {
         }
     }
 
+    #[allow(dead_code)]
     fn peek_char(&self, offset: usize) -> char {
         if self.position + offset < self.input.len() {
             self.input[self.position + offset]

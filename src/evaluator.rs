@@ -77,7 +77,16 @@ impl Evaluator {
     }
 
     fn eval_expr(&mut self, expr: &Expr) -> SlvrResult<Value> {
-        match expr {
+        // Check recursion depth
+        if self.recursion_depth >= self.max_recursion_depth {
+            return Err(SlvrError::runtime(&format!(
+                "Maximum recursion depth ({}) exceeded",
+                self.max_recursion_depth
+            )));
+        }
+
+        self.recursion_depth += 1;
+        let result = match expr {
             Expr::Literal(lit) => self.eval_literal(lit),
             Expr::Variable(name) => self.get_variable(name),
             Expr::BinOp { op, left, right } => {
@@ -120,7 +129,7 @@ impl Evaluator {
                 Ok(Value::List(vals?))
             }
             Expr::Object(fields) => {
-                let mut obj = IndexMap::new();
+                let mut obj = std::collections::HashMap::new();
                 for (key, value) in fields {
                     obj.insert(key.clone(), self.eval_expr(value)?);
                 }
@@ -162,11 +171,18 @@ impl Evaluator {
                 let key_str = key_val.to_string_value()?;
                 let table_key = format!("{}:{}", table, key_str);
                 
+                // Evaluate all field values first
+                let mut field_values = Vec::new();
+                for (field_name, field_expr) in updates {
+                    let field_val = self.eval_expr(field_expr)?;
+                    field_values.push((field_name.clone(), field_val));
+                }
+                
+                // Then update the object
                 if let Some(mut current) = self.globals.get_mut(&table_key) {
                     if let Value::Object(ref mut obj) = *current {
-                        for (field_name, field_expr) in updates {
-                            let field_val = self.eval_expr(field_expr)?;
-                            obj.insert(field_name.clone(), field_val);
+                        for (field_name, field_val) in field_values {
+                            obj.insert(field_name, field_val);
                         }
                     }
                 }
@@ -179,7 +195,10 @@ impl Evaluator {
                 let table_key = format!("{}:{}", table, key_str);
                 Ok(self.globals.remove(&table_key).map(|(_, v)| v).unwrap_or(Value::Null))
             }
-        }
+        };
+        
+        self.recursion_depth -= 1;
+        result
     }
 
     fn eval_literal(&self, lit: &Literal) -> SlvrResult<Value> {
