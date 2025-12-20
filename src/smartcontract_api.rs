@@ -125,9 +125,8 @@ impl TableDefinition {
             .ok_or_else(|| SlvrError::RuntimeError {
                 message: format!("Key {} not found", key),
             })
-            .map(|v| {
+            .inspect(|_v| {
                 self.row_count = self.row_count.saturating_sub(1);
-                v
             })
     }
 
@@ -745,16 +744,15 @@ impl ContractManager {
         
         // Execute function (simplified execution model)
         let mut state_changes = Vec::new();
-        let result_value;
         
         // For pure functions, just return a computed result
-        if function.is_pure {
-            result_value = serde_json::json!({
+        let result_value = if function.is_pure {
+            serde_json::json!({
                 "function": request.function.clone(),
                 "args": request.args,
                 "caller": request.caller.clone(),
                 "timestamp": Utc::now().to_rfc3339(),
-            });
+            })
         } else {
             // For non-pure functions, simulate state changes
             for (i, arg) in request.args.iter().enumerate() {
@@ -775,12 +773,12 @@ impl ContractManager {
                 }
             }
             
-            result_value = serde_json::json!({
+            serde_json::json!({
                 "function": request.function.clone(),
                 "status": "executed",
                 "state_changes": state_changes.len(),
-            });
-        }
+            })
+        };
         
         // Update contract state hash
         contract.update_state_hash();

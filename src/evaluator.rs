@@ -79,7 +79,7 @@ impl Evaluator {
     fn eval_expr(&mut self, expr: &Expr) -> SlvrResult<Value> {
         // Check recursion depth
         if self.recursion_depth >= self.max_recursion_depth {
-            return Err(SlvrError::runtime(&format!(
+            return Err(SlvrError::runtime(format!(
                 "Maximum recursion depth ({}) exceeded",
                 self.max_recursion_depth
             )));

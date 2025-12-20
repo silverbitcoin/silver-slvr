@@ -110,6 +110,12 @@ pub struct ModuleRegistry {
     dependency_graph: HashMap<String, Vec<String>>,
 }
 
+impl Default for ModuleRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ModuleRegistry {
     /// Create a new module registry
     pub fn new() -> Self {
@@ -153,7 +159,7 @@ impl ModuleRegistry {
         // Update version tracking
         self.module_versions
             .entry(fully_qualified_name.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(version);
 
         // Update dependency graph

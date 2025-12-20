@@ -154,6 +154,12 @@ pub struct PactManager {
     history: Vec<PactExecutionRecord>,
 }
 
+impl Default for PactManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PactManager {
     /// Create a new pact manager
     pub fn new() -> Self {

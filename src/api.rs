@@ -201,9 +201,9 @@ impl ApiHandler {
             execution_time_ms: start.elapsed().as_millis() as u64,
         };
 
-        Ok(serde_json::to_value(response).map_err(|e| SlvrError::RuntimeError {
+        serde_json::to_value(response).map_err(|e| SlvrError::RuntimeError {
             message: format!("Serialization error: {}", e),
-        })?)
+        })
     }
 
     /// Handle submit transaction request
@@ -227,9 +227,9 @@ impl ApiHandler {
             message: "Transaction submitted successfully".to_string(),
         };
 
-        Ok(serde_json::to_value(response).map_err(|e| SlvrError::RuntimeError {
+        serde_json::to_value(response).map_err(|e| SlvrError::RuntimeError {
             message: format!("Serialization error: {}", e),
-        })?)
+        })
     }
 
     /// Handle query state request
@@ -245,9 +245,9 @@ impl ApiHandler {
             exists: false,
         };
 
-        Ok(serde_json::to_value(response).map_err(|e| SlvrError::RuntimeError {
+        serde_json::to_value(response).map_err(|e| SlvrError::RuntimeError {
             message: format!("Serialization error: {}", e),
-        })?)
+        })
     }
 
     /// Handle deploy contract request
@@ -274,9 +274,9 @@ impl ApiHandler {
             status: "deployed".to_string(),
         };
 
-        Ok(serde_json::to_value(response).map_err(|e| SlvrError::RuntimeError {
+        serde_json::to_value(response).map_err(|e| SlvrError::RuntimeError {
             message: format!("Serialization error: {}", e),
-        })?)
+        })
     }
 
     /// Handle get contract request

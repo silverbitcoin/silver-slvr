@@ -224,6 +224,12 @@ pub struct ChainwebNetwork {
     peer_connections: Arc<Mutex<HashMap<ChainId, Vec<String>>>>,
 }
 
+impl Default for ChainwebNetwork {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ChainwebNetwork {
     /// Create new Chainweb network
     pub fn new() -> Self {
@@ -266,7 +272,7 @@ impl ChainwebNetwork {
         let mut blocks = self.blocks.lock().unwrap();
         blocks
             .entry(chain_id)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(block);
         Ok(())
     }
@@ -402,7 +408,7 @@ impl ChainwebNetwork {
         let mut peers = self.peer_connections.lock().unwrap();
         peers
             .entry(chain_id)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(peer_address);
         Ok(())
     }

@@ -180,7 +180,7 @@ impl Value {
             Value::List(l) => l
                 .get(index)
                 .cloned()
-                .ok_or_else(|| SlvrError::IndexOutOfBounds {
+                .ok_or(SlvrError::IndexOutOfBounds {
                     index: index as i64,
                     length: l.len(),
                 }),

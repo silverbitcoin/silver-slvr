@@ -100,6 +100,12 @@ pub struct CapabilityManager {
     grants_by_capability: HashMap<String, Vec<String>>,
 }
 
+impl Default for CapabilityManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CapabilityManager {
     /// Create a new capability manager
     pub fn new() -> Self {
@@ -176,12 +182,12 @@ impl CapabilityManager {
         // Update indices
         self.grants_by_principal
             .entry(principal)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(grant_id.clone());
 
         self.grants_by_capability
             .entry(capability_id)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(grant_id.clone());
 
         Ok(grant_id)
@@ -206,7 +212,7 @@ impl CapabilityManager {
                 if let Some(grant) = self.grants.get(grant_id) {
                     grant.active
                         && grant.capability_id == capability_id
-                        && grant.expires_at.map_or(true, |exp| exp > Utc::now())
+                        && grant.expires_at.is_none_or(|exp| exp > Utc::now())
                 } else {
                     false
                 }
@@ -225,7 +231,7 @@ impl CapabilityManager {
                     .iter()
                     .filter_map(|grant_id| {
                         self.grants.get(grant_id).cloned().filter(|g| {
-                            g.active && g.expires_at.map_or(true, |exp| exp > Utc::now())
+                            g.active && g.expires_at.is_none_or(|exp| exp > Utc::now())
                         })
                     })
                     .collect()
@@ -242,7 +248,7 @@ impl CapabilityManager {
                     .iter()
                     .filter_map(|grant_id| {
                         self.grants.get(grant_id).cloned().filter(|g| {
-                            g.active && g.expires_at.map_or(true, |exp| exp > Utc::now())
+                            g.active && g.expires_at.is_none_or(|exp| exp > Utc::now())
                         })
                     })
                     .collect()
@@ -283,7 +289,7 @@ impl CapabilityManager {
             .grants
             .iter()
             .filter(|(_, grant)| {
-                grant.expires_at.map_or(false, |exp| exp <= now)
+                grant.expires_at.is_some_and(|exp| exp <= now)
             })
             .map(|(id, _)| id.clone())
             .collect();
@@ -299,13 +305,13 @@ impl CapabilityManager {
         let active_grants = self
             .grants
             .values()
-            .filter(|g| g.active && g.expires_at.map_or(true, |exp| exp > now))
+            .filter(|g| g.active && g.expires_at.is_none_or(|exp| exp > now))
             .count();
 
         let expired_grants = self
             .grants
             .values()
-            .filter(|g| g.expires_at.map_or(false, |exp| exp <= now))
+            .filter(|g| g.expires_at.is_some_and(|exp| exp <= now))
             .count();
 
         CapabilityStats {

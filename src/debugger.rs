@@ -129,6 +129,12 @@ pub struct CallStack {
     pub frames: Vec<StackFrame>,
 }
 
+impl Default for CallStack {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CallStack {
     /// Create new call stack
     pub fn new() -> Self {

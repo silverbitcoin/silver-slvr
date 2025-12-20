@@ -149,6 +149,12 @@ pub struct UpgradeManager {
     migrations: HashMap<String, StateMigration>,
 }
 
+impl Default for UpgradeManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl UpgradeManager {
     /// Create a new upgrade manager
     pub fn new() -> Self {
@@ -185,7 +191,7 @@ impl UpgradeManager {
 
         self.versions
             .entry(contract_name)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(contract_version);
 
         Ok(version_id)

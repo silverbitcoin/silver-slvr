@@ -29,10 +29,10 @@ impl FilterCondition {
     pub fn evaluate(&self, record: &HashMap<String, Value>) -> bool {
         match self {
             FilterCondition::Equals(field, value) => {
-                record.get(field).map_or(false, |v| v == value)
+                record.get(field) == Some(value)
             }
             FilterCondition::NotEquals(field, value) => {
-                record.get(field).map_or(true, |v| v != value)
+                record.get(field) != Some(value)
             }
             FilterCondition::GreaterThan(field, value) => {
                 if let Some(v) = record.get(field) {
@@ -250,7 +250,7 @@ impl Index {
     pub fn add(&mut self, key: String, record_id: String) {
         self.entries
             .entry(key)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(record_id);
     }
 
@@ -267,8 +267,7 @@ impl Index {
     /// Lookup records by key
     pub fn lookup(&self, key: &str) -> Vec<String> {
         self.entries
-            .get(key)
-            .map(|ids| ids.clone())
+            .get(key).cloned()
             .unwrap_or_default()
     }
 
@@ -361,7 +360,7 @@ impl Pagination {
 
     /// Get total pages
     pub fn total_pages(&self) -> usize {
-        (self.total + self.page_size - 1) / self.page_size
+        self.total.div_ceil(self.page_size)
     }
 
     /// Check if has next page

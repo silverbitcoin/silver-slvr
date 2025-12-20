@@ -340,7 +340,7 @@ impl Profiler {
                             let duration = timestamp.duration_since(start_time);
                             function_times
                                 .entry(name.clone())
-                                .or_insert_with(Vec::new)
+                                .or_default()
                                 .push(duration);
                         }
                     }
@@ -354,7 +354,7 @@ impl Profiler {
                             let duration = timestamp.duration_since(start_time);
                             operation_times
                                 .entry(operation.clone())
-                                .or_insert_with(Vec::new)
+                                .or_default()
                                 .push(duration);
                         }
                     }
@@ -505,7 +505,7 @@ impl Profiler {
         report.push_str(&format!("Duration: {:.2}ms\n", profile.duration_ms));
         report.push_str(&format!("Total Fuel: {}\n", profile.fuel_profile.total_fuel));
         report.push_str(&format!("Peak Memory: {} bytes\n", profile.memory_profile.peak_usage));
-        report.push_str("\n");
+        report.push('\n');
 
         report.push_str("=== Top Functions ===\n");
         let mut functions: Vec<_> = profile.function_profiles.values().collect();
