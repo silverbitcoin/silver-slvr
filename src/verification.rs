@@ -222,6 +222,7 @@ impl Verifier {
     }
 
     /// Check single constraint
+    #[allow(clippy::only_used_in_recursion)]
     fn check_constraint(&self, constraint: &Constraint) -> SlvrResult<bool> {
         match constraint {
             Constraint::Boolean(b) => Ok(*b),

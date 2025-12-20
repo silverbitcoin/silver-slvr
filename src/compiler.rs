@@ -337,6 +337,7 @@ impl Compiler {
         bytecode.instructions = optimized;
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn ast_type_to_type(&self, ast_type: &crate::ast::Type) -> SlvrResult<crate::types::Type> {
         Ok(match ast_type {
             crate::ast::Type::Integer => crate::types::Type::Integer,

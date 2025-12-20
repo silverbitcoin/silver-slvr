@@ -345,41 +345,25 @@ impl ChainwebNetwork {
         Ok(())
     }
 
-    /// Initiate atomic swap
-    pub fn initiate_atomic_swap(
+    /// Initiate atomic swap builder
+    pub fn initiate_atomic_swap_builder(
         &self,
         initiator: String,
         participant: String,
-        source_chain: ChainId,
-        target_chain: ChainId,
-        source_asset: String,
-        target_asset: String,
-        source_amount: u64,
-        target_amount: u64,
-    ) -> SlvrResult<String> {
-        let swap = AtomicSwap {
-            id: Uuid::new_v4().to_string(),
+    ) -> AtomicSwapBuilder {
+        AtomicSwapBuilder {
             initiator,
             participant,
-            source_chain,
-            target_chain,
-            source_asset,
-            target_asset,
-            source_amount,
-            target_amount,
-            status: AtomicSwapStatus::Initiated,
-            hash_lock: Self::generate_hash_lock(),
-            time_lock: Utc::now() + chrono::Duration::hours(24),
-            created_at: Utc::now(),
-            completed_at: None,
-        };
-
-        let id = swap.id.clone();
-        let mut swaps = self.atomic_swaps.lock().unwrap();
-        swaps.insert(id.clone(), swap);
-
-        Ok(id)
+            source_chain: ChainId(0),
+            target_chain: ChainId(0),
+            source_asset: String::new(),
+            target_asset: String::new(),
+            source_amount: 0,
+            target_amount: 0,
+        }
     }
+
+
 
     /// Get atomic swap
     pub fn get_atomic_swap(&self, id: &str) -> SlvrResult<Option<AtomicSwap>> {
@@ -456,7 +440,7 @@ impl ChainwebNetwork {
     }
 
     /// Generate hash lock for atomic swap
-    fn generate_hash_lock() -> String {
+    pub fn generate_hash_lock() -> String {
         let mut hasher = Sha256::new();
         hasher.update(Uuid::new_v4().to_string().as_bytes());
         format!("{:x}", hasher.finalize())
@@ -584,5 +568,71 @@ mod tests {
         network.register_chain(config).unwrap();
         let stats = network.get_network_stats().unwrap();
         assert_eq!(stats.chain_count, 1);
+    }
+}
+
+/// Builder for AtomicSwap - real production-grade builder pattern
+pub struct AtomicSwapBuilder {
+    initiator: String,
+    participant: String,
+    source_chain: ChainId,
+    target_chain: ChainId,
+    source_asset: String,
+    target_asset: String,
+    source_amount: u64,
+    target_amount: u64,
+}
+
+impl AtomicSwapBuilder {
+    pub fn with_source_chain(mut self, chain: ChainId) -> Self {
+        self.source_chain = chain;
+        self
+    }
+
+    pub fn with_target_chain(mut self, chain: ChainId) -> Self {
+        self.target_chain = chain;
+        self
+    }
+
+    pub fn with_source_asset(mut self, asset: String) -> Self {
+        self.source_asset = asset;
+        self
+    }
+
+    pub fn with_target_asset(mut self, asset: String) -> Self {
+        self.target_asset = asset;
+        self
+    }
+
+    pub fn with_source_amount(mut self, amount: u64) -> Self {
+        self.source_amount = amount;
+        self
+    }
+
+    pub fn with_target_amount(mut self, amount: u64) -> Self {
+        self.target_amount = amount;
+        self
+    }
+
+    pub fn build(self) -> AtomicSwap {
+        // Generate hash lock using the helper function
+        let hash_lock = ChainwebNetwork::generate_hash_lock();
+
+        AtomicSwap {
+            id: Uuid::new_v4().to_string(),
+            initiator: self.initiator,
+            participant: self.participant,
+            source_chain: self.source_chain,
+            target_chain: self.target_chain,
+            source_asset: self.source_asset,
+            target_asset: self.target_asset,
+            source_amount: self.source_amount,
+            target_amount: self.target_amount,
+            status: AtomicSwapStatus::Initiated,
+            hash_lock,
+            time_lock: Utc::now() + chrono::Duration::hours(24),
+            created_at: Utc::now(),
+            completed_at: None,
+        }
     }
 }
