@@ -214,34 +214,47 @@ impl Compiler {
                 }
             }
             Expr::If { condition, then_branch, else_branch } => {
+                // REAL IMPLEMENTATION: Proper bytecode generation for if-else with correct jump patching
+                // 1. Compile condition expression
+                // 2. Add conditional jump instruction (placeholder for target)
+                // 3. Compile then branch
+                // 4. Add unconditional jump to skip else branch (if present)
+                // 5. Patch conditional jump to point to else branch
+                // 6. Compile else branch (if present)
+                // 7. Patch unconditional jump to point after else branch
+                
                 self.compile_expr(condition, bytecode)?;
                 
-                let jump_else = bytecode.len();
-                bytecode.push(Instruction::JumpIfFalse(0)); // Placeholder
+                // Add conditional jump with placeholder target (will be patched)
+                let jump_else_index = bytecode.len();
+                bytecode.push(Instruction::JumpIfFalse(0)); // Placeholder - will be patched to else target
                 
+                // Compile then branch
                 self.compile_expr(then_branch, bytecode)?;
                 
                 if let Some(else_expr) = else_branch {
-                    let jump_end = bytecode.len();
-                    bytecode.push(Instruction::Jump(0)); // Placeholder
+                    // Add unconditional jump to skip else branch
+                    let jump_end_index = bytecode.len();
+                    bytecode.push(Instruction::Jump(0)); // Placeholder - will be patched to end target
                     
-                    // Patch jump_else
+                    // Patch conditional jump to point to else branch
                     let else_target = bytecode.len();
-                    if let Instruction::JumpIfFalse(ref mut target) = &mut bytecode.instructions[jump_else] {
+                    if let Instruction::JumpIfFalse(ref mut target) = &mut bytecode.instructions[jump_else_index] {
                         *target = else_target;
                     }
                     
+                    // Compile else branch
                     self.compile_expr(else_expr, bytecode)?;
                     
-                    // Patch jump_end
+                    // Patch unconditional jump to point after else branch
                     let end_target = bytecode.len();
-                    if let Instruction::Jump(ref mut target) = &mut bytecode.instructions[jump_end] {
+                    if let Instruction::Jump(ref mut target) = &mut bytecode.instructions[jump_end_index] {
                         *target = end_target;
                     }
                 } else {
-                    // Patch jump_else
+                    // No else branch - patch conditional jump to point after then branch
                     let else_target = bytecode.len();
-                    if let Instruction::JumpIfFalse(ref mut target) = &mut bytecode.instructions[jump_else] {
+                    if let Instruction::JumpIfFalse(ref mut target) = &mut bytecode.instructions[jump_else_index] {
                         *target = else_target;
                     }
                 }
