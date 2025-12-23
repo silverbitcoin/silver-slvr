@@ -6,7 +6,7 @@
 use crate::error::{SlvrError, SlvrResult};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use sha2::{Sha256, Digest};
+use sha2::{Sha512, Digest};
 
 /// Represents a cryptographic key
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -16,20 +16,23 @@ pub struct Key {
     pub key_type: KeyType,
 }
 
-/// Type of cryptographic key
+/// Type of cryptographic key (512-bit quantum-resistant schemes only)
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum KeyType {
-    Ed25519,
-    Secp256k1,
-    BLS,
+    /// SPHINCS+ post-quantum hash-based signature scheme
+    SphincsPlus,
+    /// Dilithium3 post-quantum lattice-based signature scheme
+    Dilithium3,
+    /// Secp512r1 (NIST P-521) classical 512-bit elliptic curve signature
+    Secp512r1,
 }
 
 impl std::fmt::Display for KeyType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            KeyType::Ed25519 => write!(f, "ed25519"),
-            KeyType::Secp256k1 => write!(f, "secp256k1"),
-            KeyType::BLS => write!(f, "bls"),
+            KeyType::SphincsPlus => write!(f, "sphincsplus"),
+            KeyType::Secp512r1 => write!(f, "secp512r1"),
+            KeyType::Dilithium3 => write!(f, "dilithium3"),
         }
     }
 }
@@ -138,7 +141,7 @@ impl Keyset {
 
     /// Get keyset hash
     pub fn hash(&self) -> String {
-        let mut hasher = Sha256::new();
+        let mut hasher = Sha512::new();
         hasher.update(self.name.as_bytes());
         for key in &self.keys {
             hasher.update(key.id.as_bytes());
@@ -318,12 +321,12 @@ mod tests {
             Key {
                 id: "key1".to_string(),
                 public_key: "pub1".to_string(),
-                key_type: KeyType::Ed25519,
+                key_type: KeyType::Secp512r1,
             },
             Key {
                 id: "key2".to_string(),
                 public_key: "pub2".to_string(),
-                key_type: KeyType::Ed25519,
+                key_type: KeyType::Secp512r1,
             },
         ];
 
@@ -339,12 +342,12 @@ mod tests {
             Key {
                 id: "key1".to_string(),
                 public_key: "pub1".to_string(),
-                key_type: KeyType::Ed25519,
+                key_type: KeyType::Secp512r1,
             },
             Key {
                 id: "key2".to_string(),
                 public_key: "pub2".to_string(),
-                key_type: KeyType::Ed25519,
+                key_type: KeyType::Secp512r1,
             },
         ];
 
@@ -377,7 +380,7 @@ mod tests {
         let keys = vec![Key {
             id: "key1".to_string(),
             public_key: "pub1".to_string(),
-            key_type: KeyType::Ed25519,
+            key_type: KeyType::Secp512r1,
         }];
 
         let keyset = Keyset::new("test".to_string(), keys, 1).unwrap();

@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use parking_lot::RwLock;
 use chrono::{DateTime, Utc};
-use sha2::{Sha256, Digest};
+use sha2::{Sha512, Digest};
 
 /// Account information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -200,7 +200,7 @@ impl AccountManager {
 
     /// Generate address from public key
     fn generate_address(&self, public_key: &str) -> SlvrResult<String> {
-        let mut hasher = Sha256::new();
+        let mut hasher = Sha512::new();
         hasher.update(public_key.as_bytes());
         let hash = format!("{:x}", hasher.finalize());
         Ok(format!("0x{}", &hash[0..40]))

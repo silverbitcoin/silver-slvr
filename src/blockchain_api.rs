@@ -8,7 +8,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use parking_lot::RwLock;
 use chrono::{DateTime, Utc};
-use sha2::{Sha256, Digest};
+use sha2::{Sha512, Digest};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Block header
@@ -25,7 +25,7 @@ pub struct BlockHeader {
 
 impl BlockHeader {
     pub fn calculate_hash(&self) -> String {
-        let mut hasher = Sha256::new();
+        let mut hasher = Sha512::new();
         let header_str = format!(
             "{}{}{}{}{}{}{}",
             self.version, self.previous_hash, self.merkle_root,
@@ -84,7 +84,7 @@ impl Block {
         };
 
         block.hash = block.header.calculate_hash();
-        block.size = bincode::serialized_size(&block).unwrap_or(0) as usize;
+        block.size = serde_json::to_vec(&block).map(|v| v.len()).unwrap_or(0);
         block.gas_used = transactions.iter().map(|tx| tx.gas_used).sum();
 
         block
@@ -103,7 +103,7 @@ impl Block {
                 let left = &hashes[i];
                 let right = if i + 1 < hashes.len() { &hashes[i + 1] } else { left };
 
-                let mut hasher = Sha256::new();
+                let mut hasher = Sha512::new();
                 hasher.update(format!("{}{}", left, right).as_bytes());
                 next_level.push(format!("0x{:x}", hasher.finalize()));
             }
@@ -169,7 +169,7 @@ pub struct BlockTransaction {
 
 impl BlockTransaction {
     pub fn new(from: String, to: String, value: u64, fee: u64, nonce: u64) -> Self {
-        let mut hasher = Sha256::new();
+        let mut hasher = Sha512::new();
         let tx_str = format!("{}{}{}{}{}", from, to, value, fee, nonce);
         hasher.update(tx_str.as_bytes());
         let hash = format!("0x{:x}", hasher.finalize());

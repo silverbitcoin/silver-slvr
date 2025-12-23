@@ -6,6 +6,7 @@
 use crate::error::{SlvrError, SlvrResult};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use sha2::{Sha512, Digest};
 
 /// JSON-RPC Request
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -219,7 +220,11 @@ impl ApiHandler {
             });
         }
 
-        let tx_hash = format!("0x{}", blake3::hash(request.contract.as_bytes()).to_hex());
+        let tx_hash = {
+            let mut hasher = Sha512::new();
+            hasher.update(request.contract.as_bytes());
+            format!("0x{}", hex::encode(hasher.finalize()))
+        };
 
         let response = SubmitTransactionResponse {
             tx_hash,
@@ -264,7 +269,11 @@ impl ApiHandler {
         }
 
         let contract_id = format!("contract_{}", uuid::Uuid::new_v4());
-        let address = format!("0x{}", blake3::hash(contract_id.as_bytes()).to_hex());
+        let address = {
+            let mut hasher = Sha512::new();
+            hasher.update(contract_id.as_bytes());
+            format!("0x{}", hex::encode(hasher.finalize()))
+        };
 
         self.contracts.insert(request.name.clone(), request.code);
 

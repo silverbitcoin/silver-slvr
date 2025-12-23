@@ -6,8 +6,7 @@
 use crate::value::Value;
 use crate::error::{SlvrError, SlvrResult};
 use std::collections::HashMap;
-use sha2::{Sha256, Sha512, Digest};
-use blake3;
+use sha2::{Sha512, Digest};
 
 /// String manipulation functions
 pub mod string {
@@ -340,55 +339,30 @@ pub mod math {
 pub mod crypto {
     use super::*;
 
-    pub fn sha256(data: Value) -> SlvrResult<Value> {
+    pub fn sha512_hash(data: Value) -> SlvrResult<Value> {
         let bytes = match data {
             Value::String(s) => s.into_bytes(),
             Value::Integer(i) => i.to_string().into_bytes(),
             _ => return Err(SlvrError::TypeError {
-                message: "sha256 requires a string or integer".to_string(),
+                message: "sha512 requires a string or integer".to_string(),
             }),
         };
 
-        let mut hasher = Sha256::new();
+        let mut hasher = Sha512::new();
         hasher.update(&bytes);
         let result = hasher.finalize();
         
         Ok(Value::String(hex::encode(result)))
     }
 
-    pub fn blake3_hash(data: Value) -> SlvrResult<Value> {
-        let bytes = match data {
-            Value::String(s) => s.into_bytes(),
-            Value::Integer(i) => i.to_string().into_bytes(),
-            _ => return Err(SlvrError::TypeError {
-                message: "blake3 requires a string or integer".to_string(),
-            }),
-        };
-
-        let hash = blake3::hash(&bytes);
-        Ok(Value::String(hash.to_hex().to_string()))
-    }
-
-    pub fn verify_sha256(data: Value, hash: Value) -> SlvrResult<Value> {
-        let computed = sha256(data)?;
+    pub fn verify_sha512(data: Value, hash: Value) -> SlvrResult<Value> {
+        let computed = sha512_hash(data)?;
         match (computed, hash) {
             (Value::String(c), Value::String(h)) => {
                 Ok(Value::Boolean(c == h))
             }
             _ => Err(SlvrError::TypeError {
-                message: "verify-sha256 requires strings".to_string(),
-            }),
-        }
-    }
-
-    pub fn verify_blake3(data: Value, hash: Value) -> SlvrResult<Value> {
-        let computed = blake3_hash(data)?;
-        match (computed, hash) {
-            (Value::String(c), Value::String(h)) => {
-                Ok(Value::Boolean(c == h))
-            }
-            _ => Err(SlvrError::TypeError {
-                message: "verify-blake3 requires strings".to_string(),
+                message: "verify-sha512 requires strings".to_string(),
             }),
         }
     }
@@ -407,47 +381,6 @@ pub mod crypto {
         let result = hasher.finalize();
         
         Ok(Value::String(hex::encode(result)))
-    }
-
-    pub fn verify_sha512(data: Value, hash: Value) -> SlvrResult<Value> {
-        let computed = sha512(data)?;
-        match (computed, hash) {
-            (Value::String(c), Value::String(h)) => {
-                Ok(Value::Boolean(c == h))
-            }
-            _ => Err(SlvrError::TypeError {
-                message: "verify-sha512 requires strings".to_string(),
-            }),
-        }
-    }
-
-    pub fn hmac_sha256(key: Value, data: Value) -> SlvrResult<Value> {
-        use hmac::{Hmac, Mac};
-        type HmacSha256 = Hmac<Sha256>;
-
-        let key_bytes = match key {
-            Value::String(s) => s.into_bytes(),
-            _ => return Err(SlvrError::TypeError {
-                message: "hmac-sha256 key must be a string".to_string(),
-            }),
-        };
-
-        let data_bytes = match data {
-            Value::String(s) => s.into_bytes(),
-            Value::Integer(i) => i.to_string().into_bytes(),
-            _ => return Err(SlvrError::TypeError {
-                message: "hmac-sha256 data must be a string or integer".to_string(),
-            }),
-        };
-
-        let mut mac = HmacSha256::new_from_slice(&key_bytes)
-            .map_err(|_| SlvrError::RuntimeError {
-                message: "invalid HMAC key".to_string(),
-            })?;
-        mac.update(&data_bytes);
-        let result = mac.finalize();
-
-        Ok(Value::String(hex::encode(result.into_bytes())))
     }
 
     pub fn hmac_sha512(key: Value, data: Value) -> SlvrResult<Value> {
