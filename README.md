@@ -1,4 +1,4 @@
-# silver-slvr
+# Slvr Smart Contract Language
 
 The Slvr Programming Language - Turing-incomplete smart contract language for SilverBitcoin blockchain.
 
