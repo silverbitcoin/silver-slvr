@@ -1,10 +1,10 @@
-# silver-slvr
+# Slvr Smart Contract Language
 
 The Slvr Programming Language - Turing-incomplete smart contract language for SilverBitcoin blockchain.
 
 ## Overview
 
-`silver-slvr` is a complete, production-ready smart contract language designed for deterministic execution on the SilverBitcoin blockchain. It provides a Turing-incomplete language with compile-time safety, resource safety guarantees, and comprehensive development tools.
+`Slvr Smart Contract Language` is a complete, production-ready smart contract language designed for deterministic execution on the SilverBitcoin blockchain. It provides a Turing-incomplete language with compile-time safety, resource safety guarantees, and comprehensive development tools.
 
 ## Key Components
 
