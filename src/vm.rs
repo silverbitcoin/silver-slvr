@@ -52,7 +52,7 @@ impl VirtualMachine {
         if self.stack.is_empty() {
             Ok(Value::Unit)
         } else {
-            Ok(self.stack.pop().unwrap())
+            self.stack.pop().ok_or_else(|| SlvrError::runtime("Stack pop failed unexpectedly"))
         }
     }
 
@@ -85,7 +85,9 @@ impl VirtualMachine {
                 if self.stack.is_empty() {
                     return Err(SlvrError::runtime("Stack underflow"));
                 }
-                let val = self.stack.last().unwrap().clone();
+                let val = self.stack.last()
+                    .ok_or_else(|| SlvrError::runtime("Stack access failed"))?
+                    .clone();
                 self.stack.push(val);
             }
 

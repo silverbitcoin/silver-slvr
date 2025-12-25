@@ -695,34 +695,37 @@ mod tests {
     }
 
     #[test]
-    fn test_account_manager() {
+    fn test_account_manager() -> Result<(), Box<dyn std::error::Error>> {
         let manager = AccountManager::new();
-        let account = manager.create_account("pubkey".to_string()).unwrap();
+        let account = manager.create_account("pubkey".to_string())?;
         assert!(manager.address_exists(&account.address));
+        Ok(())
     }
 
     #[test]
-    fn test_balance_update() {
+    fn test_balance_update() -> Result<(), Box<dyn std::error::Error>> {
         let manager = AccountManager::new();
-        let account = manager.create_account("pubkey".to_string()).unwrap();
+        let account = manager.create_account("pubkey".to_string())?;
         let address = account.address;
 
-        manager.update_balance(&address, 1000).unwrap();
-        let balance = manager.get_balance(&address).unwrap();
+        manager.update_balance(&address, 1000)?;
+        let balance = manager.get_balance(&address)?;
         assert_eq!(balance, 1000);
+        Ok(())
     }
 
     #[test]
-    fn test_nonce_increment() {
+    fn test_nonce_increment() -> Result<(), Box<dyn std::error::Error>> {
         let manager = AccountManager::new();
-        let account = manager.create_account("pubkey".to_string()).unwrap();
+        let account = manager.create_account("pubkey".to_string())?;
         let address = account.address;
 
-        let nonce1 = manager.increment_nonce(&address).unwrap();
-        let nonce2 = manager.increment_nonce(&address).unwrap();
+        let nonce1 = manager.increment_nonce(&address)?;
+        let nonce2 = manager.increment_nonce(&address)?;
 
         assert_eq!(nonce1, 1);
         assert_eq!(nonce2, 2);
+        Ok(())
     }
 
     #[test]

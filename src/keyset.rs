@@ -330,10 +330,14 @@ mod tests {
             },
         ];
 
-        let keyset = Keyset::new("test".to_string(), keys, 2).unwrap();
-        assert_eq!(keyset.name, "test");
-        assert_eq!(keyset.keys.len(), 2);
-        assert_eq!(keyset.threshold, 2);
+        match Keyset::new("test".to_string(), keys, 2) {
+            Ok(keyset) => {
+                assert_eq!(keyset.name, "test");
+                assert_eq!(keyset.keys.len(), 2);
+                assert_eq!(keyset.threshold, 2);
+            }
+            Err(e) => panic!("Failed to create keyset: {}", e),
+        }
     }
 
     #[test]
@@ -351,13 +355,22 @@ mod tests {
             },
         ];
 
-        let keyset = Keyset::new("test".to_string(), keys, 2).unwrap();
-        
-        let signed = vec!["key1".to_string(), "key2".to_string()];
-        assert!(keyset.authorize(&signed).unwrap());
+        match Keyset::new("test".to_string(), keys, 2) {
+            Ok(keyset) => {
+                let signed = vec!["key1".to_string(), "key2".to_string()];
+                match keyset.authorize(&signed) {
+                    Ok(result) => assert!(result),
+                    Err(e) => panic!("Authorization check failed: {}", e),
+                }
 
-        let signed = vec!["key1".to_string()];
-        assert!(!keyset.authorize(&signed).unwrap());
+                let signed = vec!["key1".to_string()];
+                match keyset.authorize(&signed) {
+                    Ok(result) => assert!(!result),
+                    Err(e) => panic!("Authorization check failed: {}", e),
+                }
+            }
+            Err(e) => panic!("Failed to create keyset: {}", e),
+        }
     }
 
     #[test]
@@ -383,10 +396,17 @@ mod tests {
             key_type: KeyType::Secp512r1,
         }];
 
-        let keyset = Keyset::new("test".to_string(), keys, 1).unwrap();
-        manager.register_keyset(keyset).unwrap();
-
-        assert!(manager.get_keyset("test").is_ok());
-        assert!(manager.get_keyset("nonexistent").is_err());
+        match Keyset::new("test".to_string(), keys, 1) {
+            Ok(keyset) => {
+                match manager.register_keyset(keyset) {
+                    Ok(_) => {
+                        assert!(manager.get_keyset("test").is_ok());
+                        assert!(manager.get_keyset("nonexistent").is_err());
+                    }
+                    Err(e) => panic!("Failed to register keyset: {}", e),
+                }
+            }
+            Err(e) => panic!("Failed to create keyset: {}", e),
+        }
     }
 }

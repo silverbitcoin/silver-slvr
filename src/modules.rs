@@ -394,41 +394,54 @@ mod tests {
                     doc: None,
                 }],
                 vec![],
-            )
-            .unwrap();
+            );
 
-        let module = registry.get_module("contracts::token").unwrap();
-        assert_eq!(module.name, "token");
+        match result {
+            Ok(_) => {
+                match registry.get_module("contracts::token") {
+                    Ok(module) => assert_eq!(module.name, "token"),
+                    Err(e) => panic!("Failed to get module: {}", e),
+                }
+            }
+            Err(e) => panic!("Failed to register module: {}", e),
+        }
     }
 
     #[test]
     fn test_resolve_import() {
         let mut registry = ModuleRegistry::new();
-        registry
-            .register_module(
-                "token".to_string(),
-                "contracts".to_string(),
-                "1.0.0".to_string(),
-                "code".to_string(),
-                vec![ExportedSymbol {
-                    name: "transfer".to_string(),
-                    symbol_type: SymbolType::Function,
-                    public: true,
-                    doc: None,
-                }],
-                vec![],
-            )
-            .unwrap();
+        let result = registry.register_module(
+            "token".to_string(),
+            "contracts".to_string(),
+            "1.0.0".to_string(),
+            "code".to_string(),
+            vec![ExportedSymbol {
+                name: "transfer".to_string(),
+                symbol_type: SymbolType::Function,
+                public: true,
+                doc: None,
+            }],
+            vec![],
+        );
 
-        let import = ImportStatement {
-            module: "contracts::token".to_string(),
-            symbols: None,
-            alias: None,
-        };
+        match result {
+            Ok(_) => {
+                let import = ImportStatement {
+                    module: "contracts::token".to_string(),
+                    symbols: None,
+                    alias: None,
+                };
 
-        let symbols = registry.resolve_import(&import).unwrap();
-        assert_eq!(symbols.len(), 1);
-        assert_eq!(symbols[0].name, "transfer");
+                match registry.resolve_import(&import) {
+                    Ok(symbols) => {
+                        assert_eq!(symbols.len(), 1);
+                        assert_eq!(symbols[0].name, "transfer");
+                    }
+                    Err(e) => panic!("Failed to resolve import: {}", e),
+                }
+            }
+            Err(e) => panic!("Failed to register module: {}", e),
+        }
     }
 
     #[test]

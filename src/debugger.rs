@@ -233,33 +233,43 @@ impl Debugger {
     /// Add breakpoint
     pub fn add_breakpoint(&self, breakpoint: Breakpoint) -> SlvrResult<String> {
         let id = breakpoint.id.clone();
-        let mut bps = self.breakpoints.lock().unwrap();
+        let mut bps = self.breakpoints.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire breakpoints lock: {}", e),
+        })?;
         bps.insert(id.clone(), breakpoint);
         Ok(id)
     }
 
     /// Remove breakpoint
     pub fn remove_breakpoint(&self, id: &str) -> SlvrResult<()> {
-        let mut bps = self.breakpoints.lock().unwrap();
+        let mut bps = self.breakpoints.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire breakpoints lock: {}", e),
+        })?;
         bps.remove(id);
         Ok(())
     }
 
     /// Get breakpoint
     pub fn get_breakpoint(&self, id: &str) -> SlvrResult<Option<Breakpoint>> {
-        let bps = self.breakpoints.lock().unwrap();
+        let bps = self.breakpoints.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire breakpoints lock: {}", e),
+        })?;
         Ok(bps.get(id).cloned())
     }
 
     /// Get all breakpoints
     pub fn get_breakpoints(&self) -> SlvrResult<Vec<Breakpoint>> {
-        let bps = self.breakpoints.lock().unwrap();
+        let bps = self.breakpoints.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire breakpoints lock: {}", e),
+        })?;
         Ok(bps.values().cloned().collect())
     }
 
     /// Check if breakpoint at location
     pub fn check_breakpoint(&self, file: &str, line: u32) -> SlvrResult<Option<Breakpoint>> {
-        let bps = self.breakpoints.lock().unwrap();
+        let bps = self.breakpoints.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire breakpoints lock: {}", e),
+        })?;
         Ok(bps
             .values()
             .find(|bp| bp.should_trigger(file, line))
@@ -268,7 +278,9 @@ impl Debugger {
 
     /// Pause execution
     pub fn pause(&self, file: String, line: u32, column: u32) -> SlvrResult<()> {
-        let mut session = self.session.lock().unwrap();
+        let mut session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
         session.state = ExecutionState::Paused;
         session.current_file = file;
         session.current_line = line;
@@ -279,17 +291,23 @@ impl Debugger {
 
     /// Resume execution
     pub fn resume(&self) -> SlvrResult<()> {
-        let mut session = self.session.lock().unwrap();
+        let mut session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
         session.state = ExecutionState::Running;
         Ok(())
     }
 
     /// Step execution
     pub fn step(&self, step_type: StepType) -> SlvrResult<()> {
-        let mut session = self.session.lock().unwrap();
+        let mut session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
         session.state = ExecutionState::Stepping;
 
-        let mut st = self.step_type.lock().unwrap();
+        let mut st = self.step_type.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire step_type lock: {}", e),
+        })?;
         *st = Some(step_type);
 
         Ok(())
@@ -317,13 +335,17 @@ impl Debugger {
 
     /// Get current state
     pub fn get_state(&self) -> SlvrResult<ExecutionState> {
-        let session = self.session.lock().unwrap();
+        let session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
         Ok(session.state)
     }
 
     /// Get current location
     pub fn get_location(&self) -> SlvrResult<(String, u32, u32)> {
-        let session = self.session.lock().unwrap();
+        let session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
         Ok((
             session.current_file.clone(),
             session.current_line,
@@ -333,39 +355,51 @@ impl Debugger {
 
     /// Get call stack
     pub fn get_call_stack(&self) -> SlvrResult<CallStack> {
-        let session = self.session.lock().unwrap();
+        let session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
         Ok(session.call_stack.clone())
     }
 
     /// Push frame
     pub fn push_frame(&self, frame: StackFrame) -> SlvrResult<()> {
-        let mut session = self.session.lock().unwrap();
+        let mut session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
         session.call_stack.push(frame);
         Ok(())
     }
 
     /// Pop frame
     pub fn pop_frame(&self) -> SlvrResult<Option<StackFrame>> {
-        let mut session = self.session.lock().unwrap();
+        let mut session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
         Ok(session.call_stack.pop())
     }
 
     /// Get variables
     pub fn get_variables(&self) -> SlvrResult<HashMap<String, Value>> {
-        let session = self.session.lock().unwrap();
+        let session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
         Ok(session.variables.clone())
     }
 
     /// Set variable
     pub fn set_variable(&self, name: String, value: Value) -> SlvrResult<()> {
-        let mut session = self.session.lock().unwrap();
+        let mut session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
         session.variables.insert(name, value);
         Ok(())
     }
 
     /// Get variable
     pub fn get_variable(&self, name: &str) -> SlvrResult<Option<Value>> {
-        let session = self.session.lock().unwrap();
+        let session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
         Ok(session.variables.get(name).cloned())
     }
 
@@ -379,7 +413,9 @@ impl Debugger {
         };
         let id = watch.id.clone();
 
-        let mut session = self.session.lock().unwrap();
+        let mut session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
         session.watches.push(watch);
 
         Ok(id)
@@ -387,20 +423,26 @@ impl Debugger {
 
     /// Remove watch expression
     pub fn remove_watch(&self, id: &str) -> SlvrResult<()> {
-        let mut session = self.session.lock().unwrap();
+        let mut session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
         session.watches.retain(|w| w.id != id);
         Ok(())
     }
 
     /// Get watch expressions
     pub fn get_watches(&self) -> SlvrResult<Vec<WatchExpression>> {
-        let session = self.session.lock().unwrap();
+        let session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
         Ok(session.watches.clone())
     }
 
     /// Update watch value
     pub fn update_watch(&self, id: &str, value: Value) -> SlvrResult<()> {
-        let mut session = self.session.lock().unwrap();
+        let mut session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
         if let Some(watch) = session.watches.iter_mut().find(|w| w.id == id) {
             watch.value = Some(value);
             watch.error = None;
@@ -410,7 +452,9 @@ impl Debugger {
 
     /// Update watch error
     pub fn update_watch_error(&self, id: &str, error: String) -> SlvrResult<()> {
-        let mut session = self.session.lock().unwrap();
+        let mut session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
         if let Some(watch) = session.watches.iter_mut().find(|w| w.id == id) {
             watch.error = Some(error);
             watch.value = None;
@@ -420,14 +464,18 @@ impl Debugger {
 
     /// Stop debugging
     pub fn stop(&self) -> SlvrResult<()> {
-        let mut session = self.session.lock().unwrap();
+        let mut session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
         session.state = ExecutionState::Stopped;
         Ok(())
     }
 
     /// Get session info
     pub fn get_session_info(&self) -> SlvrResult<DebugSession> {
-        let session = self.session.lock().unwrap();
+        let session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
         Ok(session.clone())
     }
 
@@ -440,7 +488,9 @@ impl Debugger {
         // - Function calls: "len(array)", "sqrt(16)"
         // - Comparisons: "x > 5", "name == 'test'"
         
-        let session = self.session.lock().unwrap();
+        let session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
         
         // Get current stack frame for variable lookup
         let current_frame = match session.call_stack.current() {
@@ -523,52 +573,12 @@ impl Debugger {
             }
         }
         
-        // Case 6: Simple arithmetic operations
+        // Case 6: Production-grade arithmetic expression parser with proper precedence
         if trimmed.contains('+') || trimmed.contains('-') || trimmed.contains('*') || trimmed.contains('/') {
-            // Parse and evaluate arithmetic expression
-            // This is a simplified parser for basic operations
-            
-            // Try addition
-            if let Some(plus_pos) = trimmed.find('+') {
-                let left_str = trimmed[..plus_pos].trim();
-                let right_str = trimmed[plus_pos+1..].trim();
-                
-                if let (Ok(left), Ok(right)) = (left_str.parse::<f64>(), right_str.parse::<f64>()) {
-                    return Ok(Value::Decimal(left + right));
-                }
-            }
-            
-            // Try subtraction
-            if let Some(minus_pos) = trimmed.rfind('-') {
-                if minus_pos > 0 { // Not a negative sign
-                    let left_str = trimmed[..minus_pos].trim();
-                    let right_str = trimmed[minus_pos+1..].trim();
-                    
-                    if let (Ok(left), Ok(right)) = (left_str.parse::<f64>(), right_str.parse::<f64>()) {
-                        return Ok(Value::Decimal(left - right));
-                    }
-                }
-            }
-            
-            // Try multiplication
-            if let Some(mult_pos) = trimmed.find('*') {
-                let left_str = trimmed[..mult_pos].trim();
-                let right_str = trimmed[mult_pos+1..].trim();
-                
-                if let (Ok(left), Ok(right)) = (left_str.parse::<f64>(), right_str.parse::<f64>()) {
-                    return Ok(Value::Decimal(left * right));
-                }
-            }
-            
-            // Try division
-            if let Some(div_pos) = trimmed.find('/') {
-                let left_str = trimmed[..div_pos].trim();
-                let right_str = trimmed[div_pos+1..].trim();
-                
-                if let (Ok(left), Ok(right)) = (left_str.parse::<f64>(), right_str.parse::<f64>()) {
-                    if right != 0.0 {
-                        return Ok(Value::Decimal(left / right));
-                    }
+            match self.parse_arithmetic_expression(trimmed) {
+                Ok(result) => return Ok(result),
+                Err(_) => {
+                    // Fall through to next case if parsing fails
                 }
             }
         }
@@ -603,9 +613,256 @@ impl Debugger {
         })
     }
 
+    /// Production-grade arithmetic expression parser with proper operator precedence
+    /// Supports: +, -, *, /, parentheses, and proper precedence rules
+    fn parse_arithmetic_expression(&self, expr: &str) -> SlvrResult<Value> {
+        let expr = expr.trim();
+        
+        // Tokenize the expression
+        let tokens = self.tokenize_expression(expr)?;
+        
+        // Parse and evaluate with proper precedence
+        let (result, _) = self.parse_additive(&tokens, 0)?;
+        Ok(result)
+    }
+
+    /// Tokenize arithmetic expression into tokens
+    fn tokenize_expression(&self, expr: &str) -> SlvrResult<Vec<String>> {
+        let mut tokens = Vec::new();
+        let mut current_token = String::new();
+        let mut chars = expr.chars().peekable();
+
+        while let Some(ch) = chars.next() {
+            match ch {
+                '+' | '-' | '*' | '/' | '(' | ')' => {
+                    if !current_token.is_empty() {
+                        tokens.push(current_token.clone());
+                        current_token.clear();
+                    }
+                    tokens.push(ch.to_string());
+                }
+                ' ' | '\t' => {
+                    if !current_token.is_empty() {
+                        tokens.push(current_token.clone());
+                        current_token.clear();
+                    }
+                }
+                _ => {
+                    current_token.push(ch);
+                }
+            }
+        }
+
+        if !current_token.is_empty() {
+            tokens.push(current_token);
+        }
+
+        Ok(tokens)
+    }
+
+    /// Parse additive expressions (+ and -)
+    fn parse_additive(&self, tokens: &[String], pos: usize) -> SlvrResult<(Value, usize)> {
+        let (mut left, mut new_pos) = self.parse_multiplicative(tokens, pos)?;
+
+        while new_pos < tokens.len() {
+            match tokens[new_pos].as_str() {
+                "+" => {
+                    new_pos += 1;
+                    let (right, next_pos) = self.parse_multiplicative(tokens, new_pos)?;
+                    left = self.apply_binary_op(&left, &right, "+")?;
+                    new_pos = next_pos;
+                }
+                "-" => {
+                    new_pos += 1;
+                    let (right, next_pos) = self.parse_multiplicative(tokens, new_pos)?;
+                    left = self.apply_binary_op(&left, &right, "-")?;
+                    new_pos = next_pos;
+                }
+                _ => break,
+            }
+        }
+
+        Ok((left, new_pos))
+    }
+
+    /// Parse multiplicative expressions (* and /)
+    fn parse_multiplicative(&self, tokens: &[String], pos: usize) -> SlvrResult<(Value, usize)> {
+        let (mut left, mut new_pos) = self.parse_primary(tokens, pos)?;
+
+        while new_pos < tokens.len() {
+            match tokens[new_pos].as_str() {
+                "*" => {
+                    new_pos += 1;
+                    let (right, next_pos) = self.parse_primary(tokens, new_pos)?;
+                    left = self.apply_binary_op(&left, &right, "*")?;
+                    new_pos = next_pos;
+                }
+                "/" => {
+                    new_pos += 1;
+                    let (right, next_pos) = self.parse_primary(tokens, new_pos)?;
+                    left = self.apply_binary_op(&left, &right, "/")?;
+                    new_pos = next_pos;
+                }
+                _ => break,
+            }
+        }
+
+        Ok((left, new_pos))
+    }
+
+    /// Parse primary expressions (numbers, variables, parentheses)
+    fn parse_primary(&self, tokens: &[String], pos: usize) -> SlvrResult<(Value, usize)> {
+        if pos >= tokens.len() {
+            return Err(SlvrError::RuntimeError {
+                message: "Unexpected end of expression".to_string(),
+            });
+        }
+
+        let token = &tokens[pos];
+
+        // Handle parentheses
+        if token == "(" {
+            let (result, new_pos) = self.parse_additive(tokens, pos + 1)?;
+            if new_pos >= tokens.len() || tokens[new_pos] != ")" {
+                return Err(SlvrError::RuntimeError {
+                    message: "Missing closing parenthesis".to_string(),
+                });
+            }
+            return Ok((result, new_pos + 1));
+        }
+
+        // Handle negative numbers
+        if token == "-" && pos + 1 < tokens.len() {
+            let (value, new_pos) = self.parse_primary(tokens, pos + 1)?;
+            let negated = match value {
+                Value::Integer(n) => Value::Integer(-n),
+                Value::Decimal(d) => Value::Decimal(-d),
+                _ => return Err(SlvrError::RuntimeError {
+                    message: "Cannot negate non-numeric value".to_string(),
+                }),
+            };
+            return Ok((negated, new_pos));
+        }
+
+        // Parse numeric literal
+        if let Ok(num) = token.parse::<i128>() {
+            return Ok((Value::Integer(num), pos + 1));
+        }
+
+        if let Ok(num) = token.parse::<f64>() {
+            return Ok((Value::Decimal(num), pos + 1));
+        }
+
+        // Parse variable reference
+        let session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
+        if let Some(frame) = session.call_stack.current() {
+            if let Some(value) = frame.locals.get(token) {
+                return Ok((value.clone(), pos + 1));
+            }
+            if let Some(value) = frame.arguments.get(token) {
+                return Ok((value.clone(), pos + 1));
+            }
+        }
+
+        Err(SlvrError::RuntimeError {
+            message: format!("Unknown token or variable: '{}'", token),
+        })
+    }
+
+    /// Apply binary operation
+    fn apply_binary_op(&self, left: &Value, right: &Value, op: &str) -> SlvrResult<Value> {
+        match (left, right) {
+            (Value::Integer(l), Value::Integer(r)) => {
+                match op {
+                    "+" => Ok(Value::Integer(l + r)),
+                    "-" => Ok(Value::Integer(l - r)),
+                    "*" => Ok(Value::Integer(l * r)),
+                    "/" => {
+                        if *r == 0 {
+                            Err(SlvrError::RuntimeError {
+                                message: "Division by zero".to_string(),
+                            })
+                        } else {
+                            Ok(Value::Integer(l / r))
+                        }
+                    }
+                    _ => Err(SlvrError::RuntimeError {
+                        message: format!("Unknown operator: {}", op),
+                    }),
+                }
+            }
+            (Value::Decimal(l), Value::Decimal(r)) => {
+                match op {
+                    "+" => Ok(Value::Decimal(l + r)),
+                    "-" => Ok(Value::Decimal(l - r)),
+                    "*" => Ok(Value::Decimal(l * r)),
+                    "/" => {
+                        if *r == 0.0 {
+                            Err(SlvrError::RuntimeError {
+                                message: "Division by zero".to_string(),
+                            })
+                        } else {
+                            Ok(Value::Decimal(l / r))
+                        }
+                    }
+                    _ => Err(SlvrError::RuntimeError {
+                        message: format!("Unknown operator: {}", op),
+                    }),
+                }
+            }
+            (Value::Integer(l), Value::Decimal(r)) => {
+                let l = *l as f64;
+                match op {
+                    "+" => Ok(Value::Decimal(l + r)),
+                    "-" => Ok(Value::Decimal(l - r)),
+                    "*" => Ok(Value::Decimal(l * r)),
+                    "/" => {
+                        if *r == 0.0 {
+                            Err(SlvrError::RuntimeError {
+                                message: "Division by zero".to_string(),
+                            })
+                        } else {
+                            Ok(Value::Decimal(l / r))
+                        }
+                    }
+                    _ => Err(SlvrError::RuntimeError {
+                        message: format!("Unknown operator: {}", op),
+                    }),
+                }
+            }
+            (Value::Decimal(l), Value::Integer(r)) => {
+                let r = *r as f64;
+                match op {
+                    "+" => Ok(Value::Decimal(l + r)),
+                    "-" => Ok(Value::Decimal(l - r)),
+                    "*" => Ok(Value::Decimal(l * r)),
+                    "/" => {
+                        if r == 0.0 {
+                            Err(SlvrError::RuntimeError {
+                                message: "Division by zero".to_string(),
+                            })
+                        } else {
+                            Ok(Value::Decimal(l / r))
+                        }
+                    }
+                    _ => Err(SlvrError::RuntimeError {
+                        message: format!("Unknown operator: {}", op),
+                    }),
+                }
+            }
+            _ => Err(SlvrError::RuntimeError {
+                message: format!("Cannot apply {} to non-numeric types", op),
+            }),
+        }
+    }
+
     /// Get locals
     pub fn get_locals(&self) -> SlvrResult<HashMap<String, Value>> {
-        let session = self.session.lock().unwrap();
+        let session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
         if let Some(frame) = session.call_stack.current() {
             Ok(frame.locals.clone())
         } else {
@@ -615,7 +872,9 @@ impl Debugger {
 
     /// Get arguments
     pub fn get_arguments(&self) -> SlvrResult<HashMap<String, Value>> {
-        let session = self.session.lock().unwrap();
+        let session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire session lock: {}", e),
+        })?;
         if let Some(frame) = session.call_stack.current() {
             Ok(frame.arguments.clone())
         } else {
@@ -678,55 +937,96 @@ mod tests {
     #[test]
     fn test_debugger_creation() {
         let debugger = Debugger::new("test.slvr".to_string());
-        let state = debugger.get_state().unwrap();
-        assert_eq!(state, ExecutionState::Running);
+        match debugger.get_state() {
+            Ok(state) => assert_eq!(state, ExecutionState::Running),
+            Err(e) => panic!("Failed to get debugger state: {}", e),
+        }
     }
 
     #[test]
     fn test_debugger_pause_resume() {
         let debugger = Debugger::new("test.slvr".to_string());
-        debugger.pause("test.slvr".to_string(), 10, 0).unwrap();
-        assert_eq!(debugger.get_state().unwrap(), ExecutionState::Paused);
+        match debugger.pause("test.slvr".to_string(), 10, 0) {
+            Ok(_) => {
+                match debugger.get_state() {
+                    Ok(state) => assert_eq!(state, ExecutionState::Paused),
+                    Err(e) => panic!("Failed to get state after pause: {}", e),
+                }
 
-        debugger.resume().unwrap();
-        assert_eq!(debugger.get_state().unwrap(), ExecutionState::Running);
+                match debugger.resume() {
+                    Ok(_) => {
+                        match debugger.get_state() {
+                            Ok(state) => assert_eq!(state, ExecutionState::Running),
+                            Err(e) => panic!("Failed to get state after resume: {}", e),
+                        }
+                    }
+                    Err(e) => panic!("Failed to resume: {}", e),
+                }
+            }
+            Err(e) => panic!("Failed to pause: {}", e),
+        }
     }
 
     #[test]
     fn test_debugger_breakpoints() {
         let debugger = Debugger::new("test.slvr".to_string());
         let bp = Breakpoint::new_line("test.slvr".to_string(), 10);
-        let id = debugger.add_breakpoint(bp).unwrap();
+        match debugger.add_breakpoint(bp) {
+            Ok(id) => {
+                match debugger.get_breakpoint(&id) {
+                    Ok(retrieved) => assert!(retrieved.is_some()),
+                    Err(e) => panic!("Failed to get breakpoint: {}", e),
+                }
 
-        let retrieved = debugger.get_breakpoint(&id).unwrap();
-        assert!(retrieved.is_some());
-
-        debugger.remove_breakpoint(&id).unwrap();
-        let removed = debugger.get_breakpoint(&id).unwrap();
-        assert!(removed.is_none());
+                match debugger.remove_breakpoint(&id) {
+                    Ok(_) => {
+                        match debugger.get_breakpoint(&id) {
+                            Ok(removed) => assert!(removed.is_none()),
+                            Err(e) => panic!("Failed to get breakpoint after removal: {}", e),
+                        }
+                    }
+                    Err(e) => panic!("Failed to remove breakpoint: {}", e),
+                }
+            }
+            Err(e) => panic!("Failed to add breakpoint: {}", e),
+        }
     }
 
     #[test]
     fn test_debugger_variables() {
         let debugger = Debugger::new("test.slvr".to_string());
-        debugger
-            .set_variable("x".to_string(), Value::Integer(42))
-            .unwrap();
-
-        let value = debugger.get_variable("x").unwrap();
-        assert_eq!(value, Some(Value::Integer(42)));
+        match debugger.set_variable("x".to_string(), Value::Integer(42)) {
+            Ok(_) => {
+                match debugger.get_variable("x") {
+                    Ok(value) => assert_eq!(value, Some(Value::Integer(42))),
+                    Err(e) => panic!("Failed to get variable: {}", e),
+                }
+            }
+            Err(e) => panic!("Failed to set variable: {}", e),
+        }
     }
 
     #[test]
     fn test_debugger_watches() {
         let debugger = Debugger::new("test.slvr".to_string());
-        let id = debugger.add_watch("x + 1".to_string()).unwrap();
+        match debugger.add_watch("x + 1".to_string()) {
+            Ok(id) => {
+                match debugger.get_watches() {
+                    Ok(watches) => assert_eq!(watches.len(), 1),
+                    Err(e) => panic!("Failed to get watches: {}", e),
+                }
 
-        let watches = debugger.get_watches().unwrap();
-        assert_eq!(watches.len(), 1);
-
-        debugger.remove_watch(&id).unwrap();
-        let watches = debugger.get_watches().unwrap();
-        assert_eq!(watches.len(), 0);
+                match debugger.remove_watch(&id) {
+                    Ok(_) => {
+                        match debugger.get_watches() {
+                            Ok(watches) => assert_eq!(watches.len(), 0),
+                            Err(e) => panic!("Failed to get watches after removal: {}", e),
+                        }
+                    }
+                    Err(e) => panic!("Failed to remove watch: {}", e),
+                }
+            }
+            Err(e) => panic!("Failed to add watch: {}", e),
+        }
     }
 }

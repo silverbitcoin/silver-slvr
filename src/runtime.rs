@@ -257,9 +257,13 @@ mod tests {
     #[test]
     fn test_fuel_consumption() {
         let runtime = Runtime::new(1_000);
-        runtime.consume_fuel(100).unwrap();
-        assert_eq!(runtime.fuel(), 900);
-        assert_eq!(runtime.fuel_used(), 100);
+        match runtime.consume_fuel(100) {
+            Ok(_) => {
+                assert_eq!(runtime.fuel(), 900);
+                assert_eq!(runtime.fuel_used(), 100);
+            }
+            Err(e) => panic!("Fuel consumption failed: {}", e),
+        }
     }
 
     #[test]
@@ -273,37 +277,53 @@ mod tests {
     fn test_state_operations() {
         let runtime = Runtime::new(1_000_000);
         
-        runtime.write("key1".to_string(), Value::Integer(42)).unwrap();
-        assert_eq!(runtime.read("key1"), Some(Value::Integer(42)));
-        
-        runtime.delete("key1").unwrap();
-        assert_eq!(runtime.read("key1"), None);
+        match runtime.write("key1".to_string(), Value::Integer(42)) {
+            Ok(_) => {
+                assert_eq!(runtime.read("key1"), Some(Value::Integer(42)));
+                
+                match runtime.delete("key1") {
+                    Ok(_) => assert_eq!(runtime.read("key1"), None),
+                    Err(e) => panic!("Delete operation failed: {}", e),
+                }
+            }
+            Err(e) => panic!("Write operation failed: {}", e),
+        }
     }
 
     #[test]
     fn test_state_snapshot() {
         let runtime = Runtime::new(1_000_000);
         
-        runtime.write("key1".to_string(), Value::Integer(1)).unwrap();
-        runtime.write("key2".to_string(), Value::Integer(2)).unwrap();
-        
-        let snapshot = runtime.snapshot();
-        assert_eq!(snapshot.len(), 2);
-        
-        runtime.clear_state();
-        assert_eq!(runtime.state_size(), 0);
-        
-        runtime.restore(snapshot);
-        assert_eq!(runtime.state_size(), 2);
+        match runtime.write("key1".to_string(), Value::Integer(1)) {
+            Ok(_) => {
+                match runtime.write("key2".to_string(), Value::Integer(2)) {
+                    Ok(_) => {
+                        let snapshot = runtime.snapshot();
+                        assert_eq!(snapshot.len(), 2);
+                        
+                        runtime.clear_state();
+                        assert_eq!(runtime.state_size(), 0);
+                        
+                        runtime.restore(snapshot);
+                        assert_eq!(runtime.state_size(), 2);
+                    }
+                    Err(e) => panic!("Second write failed: {}", e),
+                }
+            }
+            Err(e) => panic!("First write failed: {}", e),
+        }
     }
 
     #[test]
     fn test_runtime_stats() {
         let runtime = Runtime::new(1_000_000);
-        runtime.consume_fuel(100_000).unwrap();
-        
-        let stats = runtime.stats();
-        assert_eq!(stats.fuel_used, 100_000);
-        assert_eq!(stats.fuel_remaining, 900_000);
+        match runtime.consume_fuel(100_000) {
+            Ok(_) => {
+                let stats = runtime.stats();
+                assert_eq!(stats.fuel_used, 100_000);
+                assert_eq!(stats.fuel_remaining, 900_000);
+            }
+            Err(e) => panic!("Fuel consumption failed: {}", e),
+        }
     }
 }

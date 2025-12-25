@@ -52,7 +52,10 @@ impl SchemaDefinition {
             });
         }
 
-        let obj = row.as_object().unwrap();
+        // PRODUCTION: Proper error handling instead of unwrap()
+        let obj = row.as_object().ok_or_else(|| SlvrError::RuntimeError {
+            message: "Failed to extract object from JSON value".to_string(),
+        })?;
 
         for (field_name, field_type) in &self.fields {
             if field_type.required && !obj.contains_key(field_name) {

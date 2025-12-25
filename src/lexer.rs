@@ -412,30 +412,42 @@ mod tests {
     #[test]
     fn test_simple_tokens() {
         let mut lexer = Lexer::new("()[]{}");
-        let tokens = lexer.tokenize().unwrap();
-        assert_eq!(tokens.len(), 7); // 6 tokens + EOF
+        match lexer.tokenize() {
+            Ok(tokens) => assert_eq!(tokens.len(), 7), // 6 tokens + EOF
+            Err(e) => panic!("Tokenization failed: {}", e),
+        }
     }
 
     #[test]
     fn test_numbers() {
         let mut lexer = Lexer::new("42 3.14");
-        let tokens = lexer.tokenize().unwrap();
-        assert!(matches!(tokens[0].token_type, TokenType::Integer(42)));
-        assert!(matches!(tokens[1].token_type, TokenType::Decimal(_)));
+        match lexer.tokenize() {
+            Ok(tokens) => {
+                assert!(matches!(tokens[0].token_type, TokenType::Integer(42)));
+                assert!(matches!(tokens[1].token_type, TokenType::Decimal(_)));
+            }
+            Err(e) => panic!("Tokenization failed: {}", e),
+        }
     }
 
     #[test]
     fn test_strings() {
         let mut lexer = Lexer::new("\"hello world\"");
-        let tokens = lexer.tokenize().unwrap();
-        assert!(matches!(tokens[0].token_type, TokenType::String(_)));
+        match lexer.tokenize() {
+            Ok(tokens) => assert!(matches!(tokens[0].token_type, TokenType::String(_))),
+            Err(e) => panic!("Tokenization failed: {}", e),
+        }
     }
 
     #[test]
     fn test_keywords() {
         let mut lexer = Lexer::new("defun if let true false");
-        let tokens = lexer.tokenize().unwrap();
-        assert!(matches!(tokens[0].token_type, TokenType::Defun));
-        assert!(matches!(tokens[1].token_type, TokenType::If));
+        match lexer.tokenize() {
+            Ok(tokens) => {
+                assert!(matches!(tokens[0].token_type, TokenType::Defun));
+                assert!(matches!(tokens[1].token_type, TokenType::If));
+            }
+            Err(e) => panic!("Tokenization failed: {}", e),
+        }
     }
 }

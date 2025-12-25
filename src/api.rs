@@ -363,9 +363,13 @@ mod tests {
             signature: "sig123".to_string(),
         };
 
-        let params = serde_json::to_value(&request).unwrap();
-        let result = handler.handle_deploy_contract(&params);
-        assert!(result.is_ok());
+        match serde_json::to_value(&request) {
+            Ok(params) => {
+                let result = handler.handle_deploy_contract(&params);
+                assert!(result.is_ok());
+            }
+            Err(e) => panic!("Failed to serialize request: {}", e),
+        }
     }
 
     #[test]
@@ -380,11 +384,14 @@ mod tests {
             signature: "sig123".to_string(),
         };
 
-        let params = serde_json::to_value(&request).unwrap();
-        let _ = handler.handle_deploy_contract(&params);
-
-        let result = handler.handle_list_contracts();
-        assert!(result.is_ok());
+        match serde_json::to_value(&request) {
+            Ok(params) => {
+                let _ = handler.handle_deploy_contract(&params);
+                let result = handler.handle_list_contracts();
+                assert!(result.is_ok());
+            }
+            Err(e) => panic!("Failed to serialize request: {}", e),
+        }
     }
 
     #[test]
