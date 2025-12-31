@@ -5,8 +5,8 @@
 use crate::error::{SlvrError, SlvrResult};
 use crate::value::Value;
 use dashmap::DashMap;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Runtime environment for Slvr execution
@@ -62,10 +62,13 @@ impl Runtime {
             fuel: Arc::new(AtomicU64::new(max_fuel)),
             max_fuel,
             start_time: SystemTime::now(),
-            tx_id: format!("tx_{}", SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_nanos()),
+            tx_id: format!(
+                "tx_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_nanos()
+            ),
             context,
         }
     }
@@ -100,10 +103,7 @@ impl Runtime {
 
     /// Get execution time in milliseconds
     pub fn execution_time_ms(&self) -> u128 {
-        self.start_time
-            .elapsed()
-            .unwrap_or_default()
-            .as_millis()
+        self.start_time.elapsed().unwrap_or_default().as_millis()
     }
 
     /// Get transaction ID
@@ -276,11 +276,11 @@ mod tests {
     #[test]
     fn test_state_operations() {
         let runtime = Runtime::new(1_000_000);
-        
+
         match runtime.write("key1".to_string(), Value::Integer(42)) {
             Ok(_) => {
                 assert_eq!(runtime.read("key1"), Some(Value::Integer(42)));
-                
+
                 match runtime.delete("key1") {
                     Ok(_) => assert_eq!(runtime.read("key1"), None),
                     Err(e) => panic!("Delete operation failed: {}", e),
@@ -293,23 +293,21 @@ mod tests {
     #[test]
     fn test_state_snapshot() {
         let runtime = Runtime::new(1_000_000);
-        
+
         match runtime.write("key1".to_string(), Value::Integer(1)) {
-            Ok(_) => {
-                match runtime.write("key2".to_string(), Value::Integer(2)) {
-                    Ok(_) => {
-                        let snapshot = runtime.snapshot();
-                        assert_eq!(snapshot.len(), 2);
-                        
-                        runtime.clear_state();
-                        assert_eq!(runtime.state_size(), 0);
-                        
-                        runtime.restore(snapshot);
-                        assert_eq!(runtime.state_size(), 2);
-                    }
-                    Err(e) => panic!("Second write failed: {}", e),
+            Ok(_) => match runtime.write("key2".to_string(), Value::Integer(2)) {
+                Ok(_) => {
+                    let snapshot = runtime.snapshot();
+                    assert_eq!(snapshot.len(), 2);
+
+                    runtime.clear_state();
+                    assert_eq!(runtime.state_size(), 0);
+
+                    runtime.restore(snapshot);
+                    assert_eq!(runtime.state_size(), 2);
                 }
-            }
+                Err(e) => panic!("Second write failed: {}", e),
+            },
             Err(e) => panic!("First write failed: {}", e),
         }
     }

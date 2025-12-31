@@ -5,8 +5,8 @@
 
 use crate::error::{SlvrError, SlvrResult};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha512};
 use std::collections::HashMap;
-use sha2::{Sha512, Digest};
 
 /// JSON-RPC Request
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -181,8 +181,8 @@ impl ApiHandler {
 
     /// Handle execute request
     fn handle_execute(&self, params: &serde_json::Value) -> SlvrResult<serde_json::Value> {
-        let request: ExecuteRequest = serde_json::from_value(params.clone())
-            .map_err(|e| SlvrError::RuntimeError {
+        let request: ExecuteRequest =
+            serde_json::from_value(params.clone()).map_err(|e| SlvrError::RuntimeError {
                 message: format!("Invalid execute request: {}", e),
             })?;
 
@@ -208,9 +208,12 @@ impl ApiHandler {
     }
 
     /// Handle submit transaction request
-    fn handle_submit_transaction(&mut self, params: &serde_json::Value) -> SlvrResult<serde_json::Value> {
-        let request: SubmitTransactionRequest = serde_json::from_value(params.clone())
-            .map_err(|e| SlvrError::RuntimeError {
+    fn handle_submit_transaction(
+        &mut self,
+        params: &serde_json::Value,
+    ) -> SlvrResult<serde_json::Value> {
+        let request: SubmitTransactionRequest =
+            serde_json::from_value(params.clone()).map_err(|e| SlvrError::RuntimeError {
                 message: format!("Invalid submit transaction request: {}", e),
             })?;
 
@@ -239,8 +242,8 @@ impl ApiHandler {
 
     /// Handle query state request
     fn handle_query_state(&self, params: &serde_json::Value) -> SlvrResult<serde_json::Value> {
-        let request: QueryStateRequest = serde_json::from_value(params.clone())
-            .map_err(|e| SlvrError::RuntimeError {
+        let request: QueryStateRequest =
+            serde_json::from_value(params.clone()).map_err(|e| SlvrError::RuntimeError {
                 message: format!("Invalid query state request: {}", e),
             })?;
 
@@ -256,9 +259,12 @@ impl ApiHandler {
     }
 
     /// Handle deploy contract request
-    fn handle_deploy_contract(&mut self, params: &serde_json::Value) -> SlvrResult<serde_json::Value> {
-        let request: DeployContractRequest = serde_json::from_value(params.clone())
-            .map_err(|e| SlvrError::RuntimeError {
+    fn handle_deploy_contract(
+        &mut self,
+        params: &serde_json::Value,
+    ) -> SlvrResult<serde_json::Value> {
+        let request: DeployContractRequest =
+            serde_json::from_value(params.clone()).map_err(|e| SlvrError::RuntimeError {
                 message: format!("Invalid deploy contract request: {}", e),
             })?;
 
@@ -290,12 +296,13 @@ impl ApiHandler {
 
     /// Handle get contract request
     fn handle_get_contract(&self, params: &serde_json::Value) -> SlvrResult<serde_json::Value> {
-        let name = params
-            .get("name")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| SlvrError::RuntimeError {
-                message: "Contract name required".to_string(),
-            })?;
+        let name =
+            params
+                .get("name")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| SlvrError::RuntimeError {
+                    message: "Contract name required".to_string(),
+                })?;
 
         if let Some(code) = self.contracts.get(name) {
             Ok(serde_json::json!({

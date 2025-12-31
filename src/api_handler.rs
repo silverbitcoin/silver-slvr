@@ -3,11 +3,11 @@
 //! This module provides a unified interface for handling requests across
 //! Blockchain APIs, Smart Contract APIs, and Account APIs.
 
-use crate::error::{SlvrError, SlvrResult};
-use crate::blockchain_api::BlockchainState;
-use crate::smartcontract_api::{ContractManager, DeploymentRequest, CallRequest};
 use crate::account_api::AccountManager;
+use crate::blockchain_api::BlockchainState;
+use crate::error::{SlvrError, SlvrResult};
 use crate::runtime::Runtime;
+use crate::smartcontract_api::{CallRequest, ContractManager, DeploymentRequest};
 use chrono::Utc;
 
 /// Unified API handler
@@ -218,7 +218,9 @@ impl ApiHandler {
         table_name: String,
         key: String,
     ) -> SlvrResult<serde_json::Value> {
-        let value = self.contracts.query_table(&contract_id, &table_name, &key)?;
+        let value = self
+            .contracts
+            .query_table(&contract_id, &table_name, &key)?;
         Ok(serde_json::json!({
             "contract_id": contract_id,
             "table": table_name,
@@ -235,7 +237,8 @@ impl ApiHandler {
         key: String,
         value: serde_json::Value,
     ) -> SlvrResult<serde_json::Value> {
-        self.contracts.write_table(&contract_id, &table_name, key.clone(), value)?;
+        self.contracts
+            .write_table(&contract_id, &table_name, key.clone(), value)?;
         Ok(serde_json::json!({
             "contract_id": contract_id,
             "table": table_name,
@@ -254,7 +257,10 @@ impl ApiHandler {
     }
 
     /// Get contract execution history
-    pub fn get_contract_execution_history(&self, contract_id: String) -> SlvrResult<serde_json::Value> {
+    pub fn get_contract_execution_history(
+        &self,
+        contract_id: String,
+    ) -> SlvrResult<serde_json::Value> {
         let history = self.contracts.get_execution_history(&contract_id);
         serde_json::to_value(history).map_err(|_| SlvrError::RuntimeError {
             message: "Serialization error".to_string(),

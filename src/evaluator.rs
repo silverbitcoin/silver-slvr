@@ -100,13 +100,18 @@ impl Evaluator {
             }
             Expr::Call { function, args } => {
                 if let Expr::Variable(func_name) = &**function {
-                    let arg_vals: SlvrResult<Vec<_>> = args.iter().map(|a| self.eval_expr(a)).collect();
+                    let arg_vals: SlvrResult<Vec<_>> =
+                        args.iter().map(|a| self.eval_expr(a)).collect();
                     self.call_function(func_name, arg_vals?)
                 } else {
                     Err(SlvrError::runtime("Invalid function call"))
                 }
             }
-            Expr::If { condition, then_branch, else_branch } => {
+            Expr::If {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
                 let cond_val = self.eval_expr(condition)?;
                 if cond_val.is_truthy() {
                     self.eval_expr(then_branch)
@@ -156,7 +161,11 @@ impl Evaluator {
                 let key_val = self.eval_expr(key)?;
                 let key_str = key_val.to_string_value()?;
                 let table_key = format!("{}:{}", table, key_str);
-                Ok(self.globals.get(&table_key).map(|v| v.clone()).unwrap_or(Value::Null))
+                Ok(self
+                    .globals
+                    .get(&table_key)
+                    .map(|v| v.clone())
+                    .unwrap_or(Value::Null))
             }
             Expr::Write { table, key, value } => {
                 let key_val = self.eval_expr(key)?;
@@ -166,18 +175,22 @@ impl Evaluator {
                 self.globals.insert(table_key, val.clone());
                 Ok(val)
             }
-            Expr::Update { table, key, updates } => {
+            Expr::Update {
+                table,
+                key,
+                updates,
+            } => {
                 let key_val = self.eval_expr(key)?;
                 let key_str = key_val.to_string_value()?;
                 let table_key = format!("{}:{}", table, key_str);
-                
+
                 // Evaluate all field values first
                 let mut field_values = Vec::new();
                 for (field_name, field_expr) in updates {
                     let field_val = self.eval_expr(field_expr)?;
                     field_values.push((field_name.clone(), field_val));
                 }
-                
+
                 // Then update the object
                 if let Some(mut current) = self.globals.get_mut(&table_key) {
                     if let Value::Object(ref mut obj) = *current {
@@ -186,17 +199,25 @@ impl Evaluator {
                         }
                     }
                 }
-                
-                Ok(self.globals.get(&table_key).map(|v| v.clone()).unwrap_or(Value::Null))
+
+                Ok(self
+                    .globals
+                    .get(&table_key)
+                    .map(|v| v.clone())
+                    .unwrap_or(Value::Null))
             }
             Expr::Delete { table, key } => {
                 let key_val = self.eval_expr(key)?;
                 let key_str = key_val.to_string_value()?;
                 let table_key = format!("{}:{}", table, key_str);
-                Ok(self.globals.remove(&table_key).map(|(_, v)| v).unwrap_or(Value::Null))
+                Ok(self
+                    .globals
+                    .remove(&table_key)
+                    .map(|(_, v)| v)
+                    .unwrap_or(Value::Null))
             }
         };
-        
+
         self.recursion_depth -= 1;
         result
     }
@@ -214,141 +235,117 @@ impl Evaluator {
 
     fn eval_binop(&self, op: BinOp, left: Value, right: Value) -> SlvrResult<Value> {
         match op {
-            BinOp::Add => {
-                match (left, right) {
-                    (Value::Integer(a), Value::Integer(b)) => Ok(Value::Integer(a + b)),
-                    (Value::Decimal(a), Value::Decimal(b)) => Ok(Value::Decimal(a + b)),
-                    (Value::Integer(a), Value::Decimal(b)) => Ok(Value::Decimal(a as f64 + b)),
-                    (Value::Decimal(a), Value::Integer(b)) => Ok(Value::Decimal(a + b as f64)),
-                    _ => Err(SlvrError::type_mismatch("numeric", "non-numeric")),
-                }
-            }
-            BinOp::Subtract => {
-                match (left, right) {
-                    (Value::Integer(a), Value::Integer(b)) => Ok(Value::Integer(a - b)),
-                    (Value::Decimal(a), Value::Decimal(b)) => Ok(Value::Decimal(a - b)),
-                    (Value::Integer(a), Value::Decimal(b)) => Ok(Value::Decimal(a as f64 - b)),
-                    (Value::Decimal(a), Value::Integer(b)) => Ok(Value::Decimal(a - b as f64)),
-                    _ => Err(SlvrError::type_mismatch("numeric", "non-numeric")),
-                }
-            }
-            BinOp::Multiply => {
-                match (left, right) {
-                    (Value::Integer(a), Value::Integer(b)) => Ok(Value::Integer(a * b)),
-                    (Value::Decimal(a), Value::Decimal(b)) => Ok(Value::Decimal(a * b)),
-                    (Value::Integer(a), Value::Decimal(b)) => Ok(Value::Decimal(a as f64 * b)),
-                    (Value::Decimal(a), Value::Integer(b)) => Ok(Value::Decimal(a * b as f64)),
-                    _ => Err(SlvrError::type_mismatch("numeric", "non-numeric")),
-                }
-            }
-            BinOp::Divide => {
-                match (left, right) {
-                    (Value::Integer(a), Value::Integer(b)) => {
-                        if b == 0 {
-                            Err(SlvrError::DivisionByZero)
-                        } else {
-                            Ok(Value::Integer(a / b))
-                        }
+            BinOp::Add => match (left, right) {
+                (Value::Integer(a), Value::Integer(b)) => Ok(Value::Integer(a + b)),
+                (Value::Decimal(a), Value::Decimal(b)) => Ok(Value::Decimal(a + b)),
+                (Value::Integer(a), Value::Decimal(b)) => Ok(Value::Decimal(a as f64 + b)),
+                (Value::Decimal(a), Value::Integer(b)) => Ok(Value::Decimal(a + b as f64)),
+                _ => Err(SlvrError::type_mismatch("numeric", "non-numeric")),
+            },
+            BinOp::Subtract => match (left, right) {
+                (Value::Integer(a), Value::Integer(b)) => Ok(Value::Integer(a - b)),
+                (Value::Decimal(a), Value::Decimal(b)) => Ok(Value::Decimal(a - b)),
+                (Value::Integer(a), Value::Decimal(b)) => Ok(Value::Decimal(a as f64 - b)),
+                (Value::Decimal(a), Value::Integer(b)) => Ok(Value::Decimal(a - b as f64)),
+                _ => Err(SlvrError::type_mismatch("numeric", "non-numeric")),
+            },
+            BinOp::Multiply => match (left, right) {
+                (Value::Integer(a), Value::Integer(b)) => Ok(Value::Integer(a * b)),
+                (Value::Decimal(a), Value::Decimal(b)) => Ok(Value::Decimal(a * b)),
+                (Value::Integer(a), Value::Decimal(b)) => Ok(Value::Decimal(a as f64 * b)),
+                (Value::Decimal(a), Value::Integer(b)) => Ok(Value::Decimal(a * b as f64)),
+                _ => Err(SlvrError::type_mismatch("numeric", "non-numeric")),
+            },
+            BinOp::Divide => match (left, right) {
+                (Value::Integer(a), Value::Integer(b)) => {
+                    if b == 0 {
+                        Err(SlvrError::DivisionByZero)
+                    } else {
+                        Ok(Value::Integer(a / b))
                     }
-                    (Value::Decimal(a), Value::Decimal(b)) => {
-                        if b == 0.0 {
-                            Err(SlvrError::DivisionByZero)
-                        } else {
-                            Ok(Value::Decimal(a / b))
-                        }
-                    }
-                    (Value::Integer(a), Value::Decimal(b)) => {
-                        if b == 0.0 {
-                            Err(SlvrError::DivisionByZero)
-                        } else {
-                            Ok(Value::Decimal(a as f64 / b))
-                        }
-                    }
-                    (Value::Decimal(a), Value::Integer(b)) => {
-                        if b == 0 {
-                            Err(SlvrError::DivisionByZero)
-                        } else {
-                            Ok(Value::Decimal(a / b as f64))
-                        }
-                    }
-                    _ => Err(SlvrError::type_mismatch("numeric", "non-numeric")),
                 }
-            }
-            BinOp::Modulo => {
-                match (left, right) {
-                    (Value::Integer(a), Value::Integer(b)) => {
-                        if b == 0 {
-                            Err(SlvrError::DivisionByZero)
-                        } else {
-                            Ok(Value::Integer(a % b))
-                        }
+                (Value::Decimal(a), Value::Decimal(b)) => {
+                    if b == 0.0 {
+                        Err(SlvrError::DivisionByZero)
+                    } else {
+                        Ok(Value::Decimal(a / b))
                     }
-                    _ => Err(SlvrError::type_mismatch("integer", "non-integer")),
                 }
-            }
-            BinOp::Power => {
-                match (left, right) {
-                    (Value::Integer(a), Value::Integer(b)) => {
-                        if b < 0 {
-                            Ok(Value::Decimal((a as f64).powf(b as f64)))
-                        } else {
-                            Ok(Value::Integer(a.pow(b as u32)))
-                        }
+                (Value::Integer(a), Value::Decimal(b)) => {
+                    if b == 0.0 {
+                        Err(SlvrError::DivisionByZero)
+                    } else {
+                        Ok(Value::Decimal(a as f64 / b))
                     }
-                    (Value::Decimal(a), Value::Decimal(b)) => Ok(Value::Decimal(a.powf(b))),
-                    (Value::Integer(a), Value::Decimal(b)) => Ok(Value::Decimal((a as f64).powf(b))),
-                    (Value::Decimal(a), Value::Integer(b)) => Ok(Value::Decimal(a.powf(b as f64))),
-                    _ => Err(SlvrError::type_mismatch("numeric", "non-numeric")),
                 }
-            }
+                (Value::Decimal(a), Value::Integer(b)) => {
+                    if b == 0 {
+                        Err(SlvrError::DivisionByZero)
+                    } else {
+                        Ok(Value::Decimal(a / b as f64))
+                    }
+                }
+                _ => Err(SlvrError::type_mismatch("numeric", "non-numeric")),
+            },
+            BinOp::Modulo => match (left, right) {
+                (Value::Integer(a), Value::Integer(b)) => {
+                    if b == 0 {
+                        Err(SlvrError::DivisionByZero)
+                    } else {
+                        Ok(Value::Integer(a % b))
+                    }
+                }
+                _ => Err(SlvrError::type_mismatch("integer", "non-integer")),
+            },
+            BinOp::Power => match (left, right) {
+                (Value::Integer(a), Value::Integer(b)) => {
+                    if b < 0 {
+                        Ok(Value::Decimal((a as f64).powf(b as f64)))
+                    } else {
+                        Ok(Value::Integer(a.pow(b as u32)))
+                    }
+                }
+                (Value::Decimal(a), Value::Decimal(b)) => Ok(Value::Decimal(a.powf(b))),
+                (Value::Integer(a), Value::Decimal(b)) => Ok(Value::Decimal((a as f64).powf(b))),
+                (Value::Decimal(a), Value::Integer(b)) => Ok(Value::Decimal(a.powf(b as f64))),
+                _ => Err(SlvrError::type_mismatch("numeric", "non-numeric")),
+            },
             BinOp::Equal => Ok(Value::Boolean(left == right)),
             BinOp::NotEqual => Ok(Value::Boolean(left != right)),
-            BinOp::Less => {
-                match (left, right) {
-                    (Value::Integer(a), Value::Integer(b)) => Ok(Value::Boolean(a < b)),
-                    (Value::Decimal(a), Value::Decimal(b)) => Ok(Value::Boolean(a < b)),
-                    (Value::Integer(a), Value::Decimal(b)) => Ok(Value::Boolean((a as f64) < b)),
-                    (Value::Decimal(a), Value::Integer(b)) => Ok(Value::Boolean(a < (b as f64))),
-                    (Value::String(a), Value::String(b)) => Ok(Value::Boolean(a < b)),
-                    _ => Err(SlvrError::type_mismatch("comparable", "non-comparable")),
-                }
-            }
-            BinOp::LessEqual => {
-                match (left, right) {
-                    (Value::Integer(a), Value::Integer(b)) => Ok(Value::Boolean(a <= b)),
-                    (Value::Decimal(a), Value::Decimal(b)) => Ok(Value::Boolean(a <= b)),
-                    (Value::Integer(a), Value::Decimal(b)) => Ok(Value::Boolean((a as f64) <= b)),
-                    (Value::Decimal(a), Value::Integer(b)) => Ok(Value::Boolean(a <= (b as f64))),
-                    (Value::String(a), Value::String(b)) => Ok(Value::Boolean(a <= b)),
-                    _ => Err(SlvrError::type_mismatch("comparable", "non-comparable")),
-                }
-            }
-            BinOp::Greater => {
-                match (left, right) {
-                    (Value::Integer(a), Value::Integer(b)) => Ok(Value::Boolean(a > b)),
-                    (Value::Decimal(a), Value::Decimal(b)) => Ok(Value::Boolean(a > b)),
-                    (Value::Integer(a), Value::Decimal(b)) => Ok(Value::Boolean((a as f64) > b)),
-                    (Value::Decimal(a), Value::Integer(b)) => Ok(Value::Boolean(a > (b as f64))),
-                    (Value::String(a), Value::String(b)) => Ok(Value::Boolean(a > b)),
-                    _ => Err(SlvrError::type_mismatch("comparable", "non-comparable")),
-                }
-            }
-            BinOp::GreaterEqual => {
-                match (left, right) {
-                    (Value::Integer(a), Value::Integer(b)) => Ok(Value::Boolean(a >= b)),
-                    (Value::Decimal(a), Value::Decimal(b)) => Ok(Value::Boolean(a >= b)),
-                    (Value::Integer(a), Value::Decimal(b)) => Ok(Value::Boolean((a as f64) >= b)),
-                    (Value::Decimal(a), Value::Integer(b)) => Ok(Value::Boolean(a >= (b as f64))),
-                    (Value::String(a), Value::String(b)) => Ok(Value::Boolean(a >= b)),
-                    _ => Err(SlvrError::type_mismatch("comparable", "non-comparable")),
-                }
-            }
-            BinOp::And => {
-                Ok(Value::Boolean(left.is_truthy() && right.is_truthy()))
-            }
-            BinOp::Or => {
-                Ok(Value::Boolean(left.is_truthy() || right.is_truthy()))
-            }
+            BinOp::Less => match (left, right) {
+                (Value::Integer(a), Value::Integer(b)) => Ok(Value::Boolean(a < b)),
+                (Value::Decimal(a), Value::Decimal(b)) => Ok(Value::Boolean(a < b)),
+                (Value::Integer(a), Value::Decimal(b)) => Ok(Value::Boolean((a as f64) < b)),
+                (Value::Decimal(a), Value::Integer(b)) => Ok(Value::Boolean(a < (b as f64))),
+                (Value::String(a), Value::String(b)) => Ok(Value::Boolean(a < b)),
+                _ => Err(SlvrError::type_mismatch("comparable", "non-comparable")),
+            },
+            BinOp::LessEqual => match (left, right) {
+                (Value::Integer(a), Value::Integer(b)) => Ok(Value::Boolean(a <= b)),
+                (Value::Decimal(a), Value::Decimal(b)) => Ok(Value::Boolean(a <= b)),
+                (Value::Integer(a), Value::Decimal(b)) => Ok(Value::Boolean((a as f64) <= b)),
+                (Value::Decimal(a), Value::Integer(b)) => Ok(Value::Boolean(a <= (b as f64))),
+                (Value::String(a), Value::String(b)) => Ok(Value::Boolean(a <= b)),
+                _ => Err(SlvrError::type_mismatch("comparable", "non-comparable")),
+            },
+            BinOp::Greater => match (left, right) {
+                (Value::Integer(a), Value::Integer(b)) => Ok(Value::Boolean(a > b)),
+                (Value::Decimal(a), Value::Decimal(b)) => Ok(Value::Boolean(a > b)),
+                (Value::Integer(a), Value::Decimal(b)) => Ok(Value::Boolean((a as f64) > b)),
+                (Value::Decimal(a), Value::Integer(b)) => Ok(Value::Boolean(a > (b as f64))),
+                (Value::String(a), Value::String(b)) => Ok(Value::Boolean(a > b)),
+                _ => Err(SlvrError::type_mismatch("comparable", "non-comparable")),
+            },
+            BinOp::GreaterEqual => match (left, right) {
+                (Value::Integer(a), Value::Integer(b)) => Ok(Value::Boolean(a >= b)),
+                (Value::Decimal(a), Value::Decimal(b)) => Ok(Value::Boolean(a >= b)),
+                (Value::Integer(a), Value::Decimal(b)) => Ok(Value::Boolean((a as f64) >= b)),
+                (Value::Decimal(a), Value::Integer(b)) => Ok(Value::Boolean(a >= (b as f64))),
+                (Value::String(a), Value::String(b)) => Ok(Value::Boolean(a >= b)),
+                _ => Err(SlvrError::type_mismatch("comparable", "non-comparable")),
+            },
+            BinOp::And => Ok(Value::Boolean(left.is_truthy() && right.is_truthy())),
+            BinOp::Or => Ok(Value::Boolean(left.is_truthy() || right.is_truthy())),
             BinOp::Concat => {
                 let left_str = left.to_string_value()?;
                 let right_str = right.to_string_value()?;
@@ -360,13 +357,11 @@ impl Evaluator {
     fn eval_unaryop(&self, op: UnaryOp, operand: Value) -> SlvrResult<Value> {
         match op {
             UnaryOp::Not => Ok(Value::Boolean(!operand.is_truthy())),
-            UnaryOp::Negate => {
-                match operand {
-                    Value::Integer(n) => Ok(Value::Integer(-n)),
-                    Value::Decimal(d) => Ok(Value::Decimal(-d)),
-                    _ => Err(SlvrError::type_mismatch("numeric", operand.type_name())),
-                }
-            }
+            UnaryOp::Negate => match operand {
+                Value::Integer(n) => Ok(Value::Integer(-n)),
+                Value::Decimal(d) => Ok(Value::Decimal(-d)),
+                _ => Err(SlvrError::type_mismatch("numeric", operand.type_name())),
+            },
         }
     }
 
@@ -382,12 +377,12 @@ impl Evaluator {
                 return Ok(val.clone());
             }
         }
-        
+
         // Check globals
         if let Some(val) = self.globals.get(name) {
             return Ok(val.clone());
         }
-        
+
         Err(SlvrError::undefined_var(name))
     }
 

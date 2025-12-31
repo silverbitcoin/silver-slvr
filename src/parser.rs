@@ -52,7 +52,7 @@ impl Parser {
         let name = self.parse_identifier()?;
         let doc = self.parse_optional_string();
         let mut body = Vec::new();
-        
+
         self.consume(TokenType::LeftBrace)?;
         while !self.check(&TokenType::RightBrace) && !self.is_at_end() {
             body.push(self.parse_definition()?);
@@ -66,14 +66,14 @@ impl Parser {
         self.consume(TokenType::Defun)?;
         let name = self.parse_identifier()?;
         let doc = self.parse_optional_string();
-        
+
         self.consume(TokenType::LeftParen)?;
         let params = self.parse_parameters()?;
         self.consume(TokenType::RightParen)?;
-        
+
         self.consume(TokenType::Arrow)?;
         let return_type = self.parse_type()?;
-        
+
         let body = self.parse_expression()?;
 
         Ok(Definition::Function {
@@ -89,7 +89,7 @@ impl Parser {
         self.consume(TokenType::Defschema)?;
         let name = self.parse_identifier()?;
         let doc = self.parse_optional_string();
-        
+
         self.consume(TokenType::LeftBrace)?;
         let mut fields = Vec::new();
         while !self.check(&TokenType::RightBrace) && !self.is_at_end() {
@@ -103,11 +103,7 @@ impl Parser {
         }
         self.consume(TokenType::RightBrace)?;
 
-        Ok(Definition::Schema {
-            name,
-            fields,
-            doc,
-        })
+        Ok(Definition::Schema { name, fields, doc })
     }
 
     fn parse_table(&mut self) -> SlvrResult<Definition> {
@@ -539,8 +535,7 @@ impl Parser {
 
     fn check(&self, token_type: &TokenType) -> bool {
         let current = self.current_token();
-        std::mem::discriminant(&current.token_type)
-            == std::mem::discriminant(token_type)
+        std::mem::discriminant(&current.token_type) == std::mem::discriminant(token_type)
     }
 
     fn advance(&mut self) {

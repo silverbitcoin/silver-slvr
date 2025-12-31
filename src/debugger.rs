@@ -3,13 +3,13 @@
 //! Full debugger implementation with breakpoints, step execution, variable inspection,
 //! call stack tracking, and real-time state monitoring.
 
-use crate::error::{SlvrResult, SlvrError};
+use crate::error::{SlvrError, SlvrResult};
 use crate::value::Value;
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 /// Breakpoint type
@@ -138,9 +138,7 @@ impl Default for CallStack {
 impl CallStack {
     /// Create new call stack
     pub fn new() -> Self {
-        Self {
-            frames: Vec::new(),
-        }
+        Self { frames: Vec::new() }
     }
 
     /// Push frame
@@ -233,43 +231,58 @@ impl Debugger {
     /// Add breakpoint
     pub fn add_breakpoint(&self, breakpoint: Breakpoint) -> SlvrResult<String> {
         let id = breakpoint.id.clone();
-        let mut bps = self.breakpoints.lock().map_err(|e| SlvrError::RuntimeError {
-            message: format!("Failed to acquire breakpoints lock: {}", e),
-        })?;
+        let mut bps = self
+            .breakpoints
+            .lock()
+            .map_err(|e| SlvrError::RuntimeError {
+                message: format!("Failed to acquire breakpoints lock: {}", e),
+            })?;
         bps.insert(id.clone(), breakpoint);
         Ok(id)
     }
 
     /// Remove breakpoint
     pub fn remove_breakpoint(&self, id: &str) -> SlvrResult<()> {
-        let mut bps = self.breakpoints.lock().map_err(|e| SlvrError::RuntimeError {
-            message: format!("Failed to acquire breakpoints lock: {}", e),
-        })?;
+        let mut bps = self
+            .breakpoints
+            .lock()
+            .map_err(|e| SlvrError::RuntimeError {
+                message: format!("Failed to acquire breakpoints lock: {}", e),
+            })?;
         bps.remove(id);
         Ok(())
     }
 
     /// Get breakpoint
     pub fn get_breakpoint(&self, id: &str) -> SlvrResult<Option<Breakpoint>> {
-        let bps = self.breakpoints.lock().map_err(|e| SlvrError::RuntimeError {
-            message: format!("Failed to acquire breakpoints lock: {}", e),
-        })?;
+        let bps = self
+            .breakpoints
+            .lock()
+            .map_err(|e| SlvrError::RuntimeError {
+                message: format!("Failed to acquire breakpoints lock: {}", e),
+            })?;
         Ok(bps.get(id).cloned())
     }
 
     /// Get all breakpoints
     pub fn get_breakpoints(&self) -> SlvrResult<Vec<Breakpoint>> {
-        let bps = self.breakpoints.lock().map_err(|e| SlvrError::RuntimeError {
-            message: format!("Failed to acquire breakpoints lock: {}", e),
-        })?;
+        let bps = self
+            .breakpoints
+            .lock()
+            .map_err(|e| SlvrError::RuntimeError {
+                message: format!("Failed to acquire breakpoints lock: {}", e),
+            })?;
         Ok(bps.values().cloned().collect())
     }
 
     /// Check if breakpoint at location
     pub fn check_breakpoint(&self, file: &str, line: u32) -> SlvrResult<Option<Breakpoint>> {
-        let bps = self.breakpoints.lock().map_err(|e| SlvrError::RuntimeError {
-            message: format!("Failed to acquire breakpoints lock: {}", e),
-        })?;
+        let bps = self
+            .breakpoints
+            .lock()
+            .map_err(|e| SlvrError::RuntimeError {
+                message: format!("Failed to acquire breakpoints lock: {}", e),
+            })?;
         Ok(bps
             .values()
             .find(|bp| bp.should_trigger(file, line))
@@ -487,52 +500,55 @@ impl Debugger {
         // - Arithmetic: "x + 5", "y * 2"
         // - Function calls: "len(array)", "sqrt(16)"
         // - Comparisons: "x > 5", "name == 'test'"
-        
+
         let session = self.session.lock().map_err(|e| SlvrError::RuntimeError {
             message: format!("Failed to acquire session lock: {}", e),
         })?;
-        
+
         // Get current stack frame for variable lookup
         let current_frame = match session.call_stack.current() {
             Some(frame) => frame.clone(),
-            None => return Err(SlvrError::RuntimeError {
-                message: "No active stack frame for expression evaluation".to_string(),
-            }),
+            None => {
+                return Err(SlvrError::RuntimeError {
+                    message: "No active stack frame for expression evaluation".to_string(),
+                })
+            }
         };
-        
+
         // REAL IMPLEMENTATION: Parse and evaluate expression
         // 1. Tokenize the expression
         // 2. Parse into AST
         // 3. Evaluate with current context
-        
+
         // Simple expression evaluation for common cases
         let trimmed = expression.trim();
-        
+
         // Case 1: Variable reference
         if let Some(value) = current_frame.locals.get(trimmed) {
             return Ok(value.clone());
         }
-        
+
         if let Some(value) = current_frame.arguments.get(trimmed) {
             return Ok(value.clone());
         }
-        
+
         // Case 2: Numeric literal
         if let Ok(num) = trimmed.parse::<i128>() {
             return Ok(Value::Integer(num));
         }
-        
+
         if let Ok(num) = trimmed.parse::<f64>() {
             return Ok(Value::Decimal(num));
         }
-        
+
         // Case 3: String literal
-        if (trimmed.starts_with('"') && trimmed.ends_with('"')) ||
-           (trimmed.starts_with('\'') && trimmed.ends_with('\'')) {
-            let string_value = trimmed[1..trimmed.len()-1].to_string();
+        if (trimmed.starts_with('"') && trimmed.ends_with('"'))
+            || (trimmed.starts_with('\'') && trimmed.ends_with('\''))
+        {
+            let string_value = trimmed[1..trimmed.len() - 1].to_string();
             return Ok(Value::String(string_value));
         }
-        
+
         // Case 4: Boolean literal
         if trimmed == "true" {
             return Ok(Value::Boolean(true));
@@ -540,14 +556,14 @@ impl Debugger {
         if trimmed == "false" {
             return Ok(Value::Boolean(false));
         }
-        
+
         // Case 5: Array/Object access (e.g., "arr[0]", "obj.field")
         if trimmed.contains('[') && trimmed.contains(']') {
             // Parse array access: "arr[index]"
             if let Some(bracket_pos) = trimmed.find('[') {
                 let var_name = &trimmed[..bracket_pos];
-                let index_str = &trimmed[bracket_pos+1..trimmed.len()-1];
-                
+                let index_str = &trimmed[bracket_pos + 1..trimmed.len() - 1];
+
                 if let Some(Value::List(arr)) = current_frame.locals.get(var_name) {
                     if let Ok(index) = index_str.parse::<usize>() {
                         if index < arr.len() {
@@ -557,14 +573,14 @@ impl Debugger {
                 }
             }
         }
-        
+
         if trimmed.contains('.') {
             // Parse object field access: "obj.field"
             let parts: Vec<&str> = trimmed.split('.').collect();
             if parts.len() == 2 {
                 let obj_name = parts[0];
                 let field_name = parts[1];
-                
+
                 if let Some(Value::Object(obj)) = current_frame.locals.get(obj_name) {
                     if let Some(value) = obj.get(field_name) {
                         return Ok(value.clone());
@@ -572,9 +588,13 @@ impl Debugger {
                 }
             }
         }
-        
+
         // Case 6: Production-grade arithmetic expression parser with proper precedence
-        if trimmed.contains('+') || trimmed.contains('-') || trimmed.contains('*') || trimmed.contains('/') {
+        if trimmed.contains('+')
+            || trimmed.contains('-')
+            || trimmed.contains('*')
+            || trimmed.contains('/')
+        {
             match self.parse_arithmetic_expression(trimmed) {
                 Ok(result) => return Ok(result),
                 Err(_) => {
@@ -582,34 +602,41 @@ impl Debugger {
                 }
             }
         }
-        
+
         // Case 7: Comparison operations
-        if trimmed.contains("==") || trimmed.contains("!=") || trimmed.contains(">") || trimmed.contains("<") {
+        if trimmed.contains("==")
+            || trimmed.contains("!=")
+            || trimmed.contains(">")
+            || trimmed.contains("<")
+        {
             // Parse comparison
             if let Some(eq_pos) = trimmed.find("==") {
                 let left_str = trimmed[..eq_pos].trim();
-                let right_str = trimmed[eq_pos+2..].trim();
-                
+                let right_str = trimmed[eq_pos + 2..].trim();
+
                 let left = self.evaluate_expression(left_str)?;
                 let right = self.evaluate_expression(right_str)?;
-                
+
                 return Ok(Value::Boolean(left == right));
             }
-            
+
             if let Some(neq_pos) = trimmed.find("!=") {
                 let left_str = trimmed[..neq_pos].trim();
-                let right_str = trimmed[neq_pos+2..].trim();
-                
+                let right_str = trimmed[neq_pos + 2..].trim();
+
                 let left = self.evaluate_expression(left_str)?;
                 let right = self.evaluate_expression(right_str)?;
-                
+
                 return Ok(Value::Boolean(left != right));
             }
         }
-        
+
         // If we can't evaluate the expression, return an error
         Err(SlvrError::RuntimeError {
-            message: format!("Cannot evaluate expression: '{}' in current context", expression),
+            message: format!(
+                "Cannot evaluate expression: '{}' in current context",
+                expression
+            ),
         })
     }
 
@@ -617,10 +644,10 @@ impl Debugger {
     /// Supports: +, -, *, /, parentheses, and proper precedence rules
     fn parse_arithmetic_expression(&self, expr: &str) -> SlvrResult<Value> {
         let expr = expr.trim();
-        
+
         // Tokenize the expression
         let tokens = self.tokenize_expression(expr)?;
-        
+
         // Parse and evaluate with proper precedence
         let (result, _) = self.parse_additive(&tokens, 0)?;
         Ok(result)
@@ -630,9 +657,9 @@ impl Debugger {
     fn tokenize_expression(&self, expr: &str) -> SlvrResult<Vec<String>> {
         let mut tokens = Vec::new();
         let mut current_token = String::new();
-        let mut chars = expr.chars().peekable();
+        let chars = expr.chars().peekable();
 
-        while let Some(ch) = chars.next() {
+        for ch in chars {
             match ch {
                 '+' | '-' | '*' | '/' | '(' | ')' => {
                     if !current_token.is_empty() {
@@ -737,9 +764,11 @@ impl Debugger {
             let negated = match value {
                 Value::Integer(n) => Value::Integer(-n),
                 Value::Decimal(d) => Value::Decimal(-d),
-                _ => return Err(SlvrError::RuntimeError {
-                    message: "Cannot negate non-numeric value".to_string(),
-                }),
+                _ => {
+                    return Err(SlvrError::RuntimeError {
+                        message: "Cannot negate non-numeric value".to_string(),
+                    })
+                }
             };
             return Ok((negated, new_pos));
         }
@@ -774,44 +803,40 @@ impl Debugger {
     /// Apply binary operation
     fn apply_binary_op(&self, left: &Value, right: &Value, op: &str) -> SlvrResult<Value> {
         match (left, right) {
-            (Value::Integer(l), Value::Integer(r)) => {
-                match op {
-                    "+" => Ok(Value::Integer(l + r)),
-                    "-" => Ok(Value::Integer(l - r)),
-                    "*" => Ok(Value::Integer(l * r)),
-                    "/" => {
-                        if *r == 0 {
-                            Err(SlvrError::RuntimeError {
-                                message: "Division by zero".to_string(),
-                            })
-                        } else {
-                            Ok(Value::Integer(l / r))
-                        }
+            (Value::Integer(l), Value::Integer(r)) => match op {
+                "+" => Ok(Value::Integer(l + r)),
+                "-" => Ok(Value::Integer(l - r)),
+                "*" => Ok(Value::Integer(l * r)),
+                "/" => {
+                    if *r == 0 {
+                        Err(SlvrError::RuntimeError {
+                            message: "Division by zero".to_string(),
+                        })
+                    } else {
+                        Ok(Value::Integer(l / r))
                     }
-                    _ => Err(SlvrError::RuntimeError {
-                        message: format!("Unknown operator: {}", op),
-                    }),
                 }
-            }
-            (Value::Decimal(l), Value::Decimal(r)) => {
-                match op {
-                    "+" => Ok(Value::Decimal(l + r)),
-                    "-" => Ok(Value::Decimal(l - r)),
-                    "*" => Ok(Value::Decimal(l * r)),
-                    "/" => {
-                        if *r == 0.0 {
-                            Err(SlvrError::RuntimeError {
-                                message: "Division by zero".to_string(),
-                            })
-                        } else {
-                            Ok(Value::Decimal(l / r))
-                        }
+                _ => Err(SlvrError::RuntimeError {
+                    message: format!("Unknown operator: {}", op),
+                }),
+            },
+            (Value::Decimal(l), Value::Decimal(r)) => match op {
+                "+" => Ok(Value::Decimal(l + r)),
+                "-" => Ok(Value::Decimal(l - r)),
+                "*" => Ok(Value::Decimal(l * r)),
+                "/" => {
+                    if *r == 0.0 {
+                        Err(SlvrError::RuntimeError {
+                            message: "Division by zero".to_string(),
+                        })
+                    } else {
+                        Ok(Value::Decimal(l / r))
                     }
-                    _ => Err(SlvrError::RuntimeError {
-                        message: format!("Unknown operator: {}", op),
-                    }),
                 }
-            }
+                _ => Err(SlvrError::RuntimeError {
+                    message: format!("Unknown operator: {}", op),
+                }),
+            },
             (Value::Integer(l), Value::Decimal(r)) => {
                 let l = *l as f64;
                 match op {
@@ -897,11 +922,7 @@ mod tests {
 
     #[test]
     fn test_conditional_breakpoint() {
-        let bp = Breakpoint::new_conditional(
-            "test.slvr".to_string(),
-            10,
-            "x > 5".to_string(),
-        );
+        let bp = Breakpoint::new_conditional("test.slvr".to_string(), 10, "x > 5".to_string());
         assert_eq!(bp.breakpoint_type, BreakpointType::Conditional);
         assert_eq!(bp.condition, Some("x > 5".to_string()));
     }
@@ -954,12 +975,10 @@ mod tests {
                 }
 
                 match debugger.resume() {
-                    Ok(_) => {
-                        match debugger.get_state() {
-                            Ok(state) => assert_eq!(state, ExecutionState::Running),
-                            Err(e) => panic!("Failed to get state after resume: {}", e),
-                        }
-                    }
+                    Ok(_) => match debugger.get_state() {
+                        Ok(state) => assert_eq!(state, ExecutionState::Running),
+                        Err(e) => panic!("Failed to get state after resume: {}", e),
+                    },
                     Err(e) => panic!("Failed to resume: {}", e),
                 }
             }
@@ -979,12 +998,10 @@ mod tests {
                 }
 
                 match debugger.remove_breakpoint(&id) {
-                    Ok(_) => {
-                        match debugger.get_breakpoint(&id) {
-                            Ok(removed) => assert!(removed.is_none()),
-                            Err(e) => panic!("Failed to get breakpoint after removal: {}", e),
-                        }
-                    }
+                    Ok(_) => match debugger.get_breakpoint(&id) {
+                        Ok(removed) => assert!(removed.is_none()),
+                        Err(e) => panic!("Failed to get breakpoint after removal: {}", e),
+                    },
                     Err(e) => panic!("Failed to remove breakpoint: {}", e),
                 }
             }
@@ -996,12 +1013,10 @@ mod tests {
     fn test_debugger_variables() {
         let debugger = Debugger::new("test.slvr".to_string());
         match debugger.set_variable("x".to_string(), Value::Integer(42)) {
-            Ok(_) => {
-                match debugger.get_variable("x") {
-                    Ok(value) => assert_eq!(value, Some(Value::Integer(42))),
-                    Err(e) => panic!("Failed to get variable: {}", e),
-                }
-            }
+            Ok(_) => match debugger.get_variable("x") {
+                Ok(value) => assert_eq!(value, Some(Value::Integer(42))),
+                Err(e) => panic!("Failed to get variable: {}", e),
+            },
             Err(e) => panic!("Failed to set variable: {}", e),
         }
     }
@@ -1017,12 +1032,10 @@ mod tests {
                 }
 
                 match debugger.remove_watch(&id) {
-                    Ok(_) => {
-                        match debugger.get_watches() {
-                            Ok(watches) => assert_eq!(watches.len(), 0),
-                            Err(e) => panic!("Failed to get watches after removal: {}", e),
-                        }
-                    }
+                    Ok(_) => match debugger.get_watches() {
+                        Ok(watches) => assert_eq!(watches.len(), 0),
+                        Err(e) => panic!("Failed to get watches after removal: {}", e),
+                    },
                     Err(e) => panic!("Failed to remove watch: {}", e),
                 }
             }

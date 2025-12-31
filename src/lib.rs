@@ -48,50 +48,50 @@
 //!       (update coins to { "balance": (+ (at "balance" (read coins to)) amount) }))))
 //! ```
 
+pub mod account_api;
+pub mod api;
+pub mod api_handler;
 pub mod ast;
+pub mod blockchain_api;
 pub mod bytecode;
+pub mod chainweb;
 pub mod compiler;
+pub mod debugger;
+pub mod defcap;
+pub mod defpact;
 pub mod error;
 pub mod evaluator;
-pub mod lexer;
-pub mod parser;
-pub mod runtime;
-pub mod types;
-pub mod value;
-pub mod vm;
-pub mod stdlib;
 pub mod keyset;
-pub mod query;
-pub mod transaction;
-pub mod api;
-pub mod verification;
-pub mod defpact;
-pub mod defcap;
-pub mod upgrades;
-pub mod modules;
-pub mod testing;
-pub mod blockchain_api;
-pub mod smartcontract_api;
-pub mod account_api;
-pub mod api_handler;
+pub mod lexer;
 pub mod lsp;
-pub mod debugger;
+pub mod modules;
+pub mod parser;
 pub mod profiler;
-pub mod chainweb;
+pub mod query;
+pub mod runtime;
+pub mod smartcontract_api;
+pub mod stdlib;
+pub mod testing;
+pub mod transaction;
+pub mod types;
+pub mod upgrades;
+pub mod value;
+pub mod verification;
+pub mod vm;
 
+pub use chainweb::ChainwebNetwork;
 pub use compiler::Compiler;
+pub use debugger::Debugger;
 pub use error::{SlvrError, SlvrResult};
 pub use evaluator::Evaluator;
 pub use lexer::Lexer;
+pub use lsp::LspServer;
 pub use parser::Parser;
+pub use profiler::Profiler;
 pub use runtime::Runtime;
 pub use types::{Type, TypeEnv};
 pub use value::Value;
 pub use vm::VirtualMachine;
-pub use lsp::LspServer;
-pub use debugger::Debugger;
-pub use profiler::Profiler;
-pub use chainweb::ChainwebNetwork;
 
 /// The version of the Slvr language
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -100,7 +100,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const LANGUAGE_NAME: &str = "The Slvr Programming Language";
 
 /// Language description
-pub const LANGUAGE_DESCRIPTION: &str = 
+pub const LANGUAGE_DESCRIPTION: &str =
     "A Turing-incomplete smart contract language for the SilverBitcoin blockchain";
 
 /// Maximum recursion depth to prevent stack overflow
@@ -216,7 +216,7 @@ mod tests {
         let config = SlvrConfig::new()
             .with_max_recursion_depth(512)
             .with_fuel_metering(false);
-        
+
         assert_eq!(config.max_recursion_depth, 512);
         assert!(!config.enable_fuel_metering);
     }

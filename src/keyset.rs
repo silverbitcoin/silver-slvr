@@ -5,8 +5,8 @@
 
 use crate::error::{SlvrError, SlvrResult};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha512};
 use std::collections::{HashMap, HashSet};
-use sha2::{Sha512, Digest};
 
 /// Represents a cryptographic key
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -70,10 +70,7 @@ impl Keyset {
 
         if threshold == 0 || threshold > keys.len() {
             return Err(SlvrError::RuntimeError {
-                message: format!(
-                    "threshold must be between 1 and {}",
-                    keys.len()
-                ),
+                message: format!("threshold must be between 1 and {}", keys.len()),
             });
         }
 
@@ -121,11 +118,10 @@ impl Keyset {
                 let signed: HashSet<_> = signed_keys.iter().cloned().collect();
                 Ok(required == signed)
             }
-            KeysetPredicate::Any => {
-                Ok(!signed_keys.is_empty() && signed_keys.iter().all(|k| {
-                    self.keys.iter().any(|key| key.id == *k)
-                }))
-            }
+            KeysetPredicate::Any => Ok(!signed_keys.is_empty()
+                && signed_keys
+                    .iter()
+                    .all(|k| self.keys.iter().any(|key| key.id == *k))),
             KeysetPredicate::AtLeast(n) => {
                 let valid_signatures = signed_keys
                     .iter()
@@ -133,9 +129,7 @@ impl Keyset {
                     .count();
                 Ok(valid_signatures >= *n)
             }
-            KeysetPredicate::Custom(_) => {
-                Ok(true)
-            }
+            KeysetPredicate::Custom(_) => Ok(true),
         }
     }
 
@@ -163,11 +157,7 @@ pub struct Capability {
 
 impl Capability {
     /// Create a new capability
-    pub fn new(
-        name: String,
-        keyset: String,
-        permissions: Vec<String>,
-    ) -> Self {
+    pub fn new(name: String, keyset: String, permissions: Vec<String>) -> Self {
         let id = format!("cap_{}", uuid::Uuid::new_v4());
         Capability {
             id,
@@ -397,15 +387,13 @@ mod tests {
         }];
 
         match Keyset::new("test".to_string(), keys, 1) {
-            Ok(keyset) => {
-                match manager.register_keyset(keyset) {
-                    Ok(_) => {
-                        assert!(manager.get_keyset("test").is_ok());
-                        assert!(manager.get_keyset("nonexistent").is_err());
-                    }
-                    Err(e) => panic!("Failed to register keyset: {}", e),
+            Ok(keyset) => match manager.register_keyset(keyset) {
+                Ok(_) => {
+                    assert!(manager.get_keyset("test").is_ok());
+                    assert!(manager.get_keyset("nonexistent").is_err());
                 }
-            }
+                Err(e) => panic!("Failed to register keyset: {}", e),
+            },
             Err(e) => panic!("Failed to create keyset: {}", e),
         }
     }

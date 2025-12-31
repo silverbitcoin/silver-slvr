@@ -1,17 +1,17 @@
 //! Smart Contract APIs - Full Slvr Language Implementation
 //! Complete production-ready smart contract management system
 
+use crate::ast::Definition;
+use crate::compiler::Compiler;
 use crate::error::{SlvrError, SlvrResult};
 use crate::lexer::Lexer;
 use crate::parser::Parser;
-use crate::compiler::Compiler;
-use crate::ast::Definition;
+use chrono::{DateTime, Utc};
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha512};
 use std::collections::HashMap;
 use std::sync::Arc;
-use parking_lot::RwLock;
-use chrono::{DateTime, Utc};
-use sha2::{Sha512, Digest};
 
 /// Schema field definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -145,7 +145,10 @@ impl TableDefinition {
         self.rows.len()
     }
 
-    pub fn scan(&self, predicate: impl Fn(&serde_json::Value) -> bool) -> Vec<(String, serde_json::Value)> {
+    pub fn scan(
+        &self,
+        predicate: impl Fn(&serde_json::Value) -> bool,
+    ) -> Vec<(String, serde_json::Value)> {
         self.rows
             .iter()
             .filter(|(_, v)| predicate(v))
@@ -391,10 +394,8 @@ impl SlvrContract {
         for def in &program.definitions {
             match def {
                 Definition::Module { name, doc, body } => {
-                    let mut m = ModuleDefinition::new(
-                        name.clone(),
-                        doc.clone().unwrap_or_default(),
-                    );
+                    let mut m =
+                        ModuleDefinition::new(name.clone(), doc.clone().unwrap_or_default());
 
                     for inner_def in body {
                         Self::process_definition(inner_def, &mut m).ok();
@@ -421,19 +422,20 @@ impl SlvrContract {
                 body,
             } => {
                 let mut func = FunctionDefinition::new(name.clone(), format!("{}", return_type));
-                
+
                 for (param_name, param_type) in params {
                     func.add_parameter(param_name.clone(), format!("{}", param_type));
                 }
-                
+
                 func.set_documentation(doc.clone().unwrap_or_default());
                 func.set_body(format!("{:?}", body));
-                
+
                 module.add_function(func);
             }
             Definition::Schema { name, fields, doc } => {
-                let mut schema = SchemaDefinition::new(name.clone(), doc.clone().unwrap_or_default());
-                
+                let mut schema =
+                    SchemaDefinition::new(name.clone(), doc.clone().unwrap_or_default());
+
                 for (field_name, field_type) in fields {
                     let field = FieldType {
                         name: field_name.clone(),
@@ -443,10 +445,14 @@ impl SlvrContract {
                     };
                     schema.add_field(field);
                 }
-                
+
                 module.add_schema(schema);
             }
-            Definition::Table { name, schema, doc: _ } => {
+            Definition::Table {
+                name,
+                schema,
+                doc: _,
+            } => {
                 let table = TableDefinition::new(name.clone(), schema.clone());
                 module.add_table(table);
             }
@@ -711,22 +717,24 @@ impl ContractManager {
         runtime: &crate::runtime::Runtime,
     ) -> SlvrResult<ExecutionResult> {
         let mut contract = self.get_contract(&request.contract_id)?;
-        
+
         let start_time = std::time::Instant::now();
-        
+
         // Validate function exists
-        let function = contract.module.get_function(&request.function)
+        let function = contract
+            .module
+            .get_function(&request.function)
             .ok_or_else(|| SlvrError::RuntimeError {
                 message: format!("Function {} not found", request.function),
             })?;
-        
+
         // Check visibility
         if !function.is_public {
             return Err(SlvrError::RuntimeError {
                 message: format!("Function {} is not public", request.function),
             });
         }
-        
+
         // Validate argument count
         if request.args.len() != function.parameters.len() {
             return Err(SlvrError::RuntimeError {
@@ -738,17 +746,19 @@ impl ContractManager {
                 ),
             });
         }
-        
+
         // Calculate fuel usage based on function complexity and arguments
         let base_fuel = 1000u64;
-        let arg_fuel = request.args.iter().map(|arg| {
-            serde_json::to_string(arg).unwrap_or_default().len() as u64 * 10
-        }).sum::<u64>();
+        let arg_fuel = request
+            .args
+            .iter()
+            .map(|arg| serde_json::to_string(arg).unwrap_or_default().len() as u64 * 10)
+            .sum::<u64>();
         let total_fuel = base_fuel + arg_fuel;
-        
+
         // Check fuel availability and consume it
         runtime.consume_fuel(total_fuel)?;
-        
+
         // REAL IMPLEMENTATION: Full function execution with complete state management
         // This is a production-grade implementation that:
         // 1. Validates all function parameters
@@ -756,16 +766,16 @@ impl ContractManager {
         // 3. Tracks all state changes
         // 4. Updates contract state atomically
         // 5. Records execution for audit trail
-        
+
         let mut state_changes = Vec::new();
-        
+
         // REAL EXECUTION: Execute function based on type
         let result_value = if function.is_pure {
             // PURE FUNCTION EXECUTION: No state changes, deterministic result
             // 1. Validate all inputs
             // 2. Execute computation
             // 3. Return result
-            
+
             // Validate arguments match parameters
             if request.args.len() != function.parameters.len() {
                 return Err(SlvrError::RuntimeError {
@@ -776,10 +786,10 @@ impl ContractManager {
                     ),
                 });
             }
-            
+
             // Execute pure function with argument validation
             let mut computed_result = serde_json::json!({});
-            
+
             for (i, (param_name, _param_type)) in function.parameters.iter().enumerate() {
                 if let Some(arg) = request.args.get(i) {
                     // Validate argument type matches parameter type
@@ -791,12 +801,12 @@ impl ContractManager {
                         serde_json::Value::Object(_) => "object",
                         serde_json::Value::Null => "null",
                     };
-                    
+
                     // Store parameter for computation
                     computed_result[param_name] = arg.clone();
                 }
             }
-            
+
             // Return computed result with metadata
             serde_json::json!({
                 "function": request.function.clone(),
@@ -813,7 +823,7 @@ impl ContractManager {
             // 3. Track state changes
             // 4. Validate state consistency
             // 5. Commit changes atomically
-            
+
             // Validate arguments match parameters
             if request.args.len() != function.parameters.len() {
                 return Err(SlvrError::RuntimeError {
@@ -824,19 +834,24 @@ impl ContractManager {
                     ),
                 });
             }
-            
+
             // Execute non-pure function with state tracking
             for (i, arg) in request.args.iter().enumerate() {
                 if let Some((param_name, _param_type)) = function.parameters.get(i) {
                     // Get old value for change tracking
-                    let old_value = contract.state.variables.get(
-                        &format!("{}_{}", request.function, param_name)
-                    ).cloned();
-                    
+                    let old_value = contract
+                        .state
+                        .variables
+                        .get(&format!("{}_{}", request.function, param_name))
+                        .cloned();
+
                     // Update state variable
                     let new_key = format!("{}_{}", request.function, param_name);
-                    contract.state.variables.insert(new_key.clone(), arg.clone());
-                    
+                    contract
+                        .state
+                        .variables
+                        .insert(new_key.clone(), arg.clone());
+
                     // Record state change
                     state_changes.push(StateChange {
                         table: "variables".to_string(),
@@ -848,12 +863,12 @@ impl ContractManager {
                     });
                 }
             }
-            
+
             // REAL VALIDATION: Verify state consistency after changes
             // 1. Check for constraint violations
             // 2. Validate invariants
             // 3. Ensure atomicity
-            
+
             // Return execution result with state changes
             serde_json::json!({
                 "function": request.function.clone(),
@@ -864,14 +879,14 @@ impl ContractManager {
                 "caller": request.caller.clone()
             })
         };
-        
+
         // Update contract state hash
         contract.update_state_hash();
-        
+
         // Store updated contract
         let mut contracts = self.contracts.write();
         contracts.insert(request.contract_id.clone(), contract);
-        
+
         // Record execution
         let execution_time = start_time.elapsed().as_millis();
         let record = ExecutionRecord {
@@ -886,12 +901,15 @@ impl ContractManager {
                 fuel_used: total_fuel,
                 execution_time_ms: execution_time,
                 state_changes: state_changes.clone(),
-                logs: vec![format!("Function {} executed successfully", request.function)],
+                logs: vec![format!(
+                    "Function {} executed successfully",
+                    request.function
+                )],
             },
         };
-        
+
         self.execution_history.write().push(record.clone());
-        
+
         Ok(record.result)
     }
 
@@ -902,17 +920,17 @@ impl ContractManager {
         key: &str,
     ) -> SlvrResult<Option<serde_json::Value>> {
         let contract = self.get_contract(contract_id)?;
-        
+
         // First check if it's a variable in contract state
         if let Some(value) = contract.state.variables.get(key) {
             return Ok(Some(value.clone()));
         }
-        
+
         // Then check if it's in a table
         if let Some(table) = contract.state.tables.get(table_name) {
             return Ok(table.read(key).ok());
         }
-        
+
         Ok(None)
     }
 
@@ -923,11 +941,11 @@ impl ContractManager {
         key: &str,
     ) -> SlvrResult<Option<serde_json::Value>> {
         let contract = self.get_contract(contract_id)?;
-        
+
         if let Some(table) = contract.state.tables.get(table_name) {
             return Ok(table.read(key).ok());
         }
-        
+
         Err(SlvrError::RuntimeError {
             message: format!("Table {} not found in contract {}", table_name, contract_id),
         })
@@ -941,7 +959,7 @@ impl ContractManager {
         value: serde_json::Value,
     ) -> SlvrResult<()> {
         let mut contract = self.get_contract(contract_id)?;
-        
+
         // Get or create table
         if !contract.state.tables.contains_key(table_name) {
             contract.state.tables.insert(
@@ -949,7 +967,7 @@ impl ContractManager {
                 TableDefinition::new(table_name.to_string(), "default".to_string()),
             );
         }
-        
+
         // Write to table
         if let Some(table) = contract.state.tables.get_mut(table_name) {
             if table.exists(&key) {
@@ -958,14 +976,14 @@ impl ContractManager {
                 table.insert(key, value)?;
             }
         }
-        
+
         // Update contract state hash
         contract.update_state_hash();
-        
+
         // Store updated contract
         let mut contracts = self.contracts.write();
         contracts.insert(contract_id.to_string(), contract);
-        
+
         Ok(())
     }
 
@@ -985,7 +1003,8 @@ impl ContractManager {
             "functions": contract.module.functions.len(),
             "schemas": contract.module.schemas.len(),
             "tables": contract.state.tables.len(),
-        })).map_err(|_| SlvrError::RuntimeError {
+        }))
+        .map_err(|_| SlvrError::RuntimeError {
             message: "Serialization error".to_string(),
         })
     }
@@ -1050,7 +1069,8 @@ mod tests {
         let manager = ContractManager::new();
         let request = DeploymentRequest {
             name: "test".to_string(),
-            source_code: "module test \"Test module\" { defun test-fn () -> integer 42 }".to_string(),
+            source_code: "module test \"Test module\" { defun test-fn () -> integer 42 }"
+                .to_string(),
             author: "author".to_string(),
             version: "1.0.0".to_string(),
             deployer: "deployer".to_string(),
@@ -1064,8 +1084,7 @@ mod tests {
                 assert!(true, "Contract deployment succeeded");
             }
             Err(e) => {
-                // PRODUCTION: Assert with proper error message instead of panic
-                assert!(false, "Deploy failed: {:?}", e);
+                panic!("Deploy failed: {:?}", e);
             }
         }
     }
@@ -1075,7 +1094,8 @@ mod tests {
         let manager = ContractManager::new();
         let request = DeploymentRequest {
             name: "test".to_string(),
-            source_code: "module test \"Test module\" { defun test-fn () -> integer 42 }".to_string(),
+            source_code: "module test \"Test module\" { defun test-fn () -> integer 42 }"
+                .to_string(),
             author: "author".to_string(),
             version: "1.0.0".to_string(),
             deployer: "deployer".to_string(),

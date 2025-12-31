@@ -3,14 +3,14 @@
 //! Full Chainweb integration for multi-chain smart contract execution,
 //! cross-chain messaging, atomic swaps, and chain synchronization.
 
-use crate::error::{SlvrResult, SlvrError};
+use crate::error::{SlvrError, SlvrResult};
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha512};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use chrono::{DateTime, Utc};
 use uuid::Uuid;
-use sha2::{Sha512, Digest};
 
 /// Chain identifier
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -252,10 +252,10 @@ impl ChainwebNetwork {
     /// Register chain
     pub fn register_chain(&self, config: ChainConfig) -> SlvrResult<()> {
         let chain_id = config.chain_id;
-        let mut chains = self.chains.lock().unwrap();
+        let mut chains = self.chains.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
         chains.insert(chain_id, config);
 
-        let mut blocks = self.blocks.lock().unwrap();
+        let mut blocks = self.blocks.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
         blocks.insert(chain_id, Vec::new());
 
         Ok(())
@@ -263,43 +263,40 @@ impl ChainwebNetwork {
 
     /// Get chain config
     pub fn get_chain(&self, chain_id: ChainId) -> SlvrResult<Option<ChainConfig>> {
-        let chains = self.chains.lock().unwrap();
+        let chains = self.chains.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
         Ok(chains.get(&chain_id).cloned())
     }
 
     /// Get all chains
     pub fn get_chains(&self) -> SlvrResult<Vec<ChainConfig>> {
-        let chains = self.chains.lock().unwrap();
+        let chains = self.chains.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
         Ok(chains.values().cloned().collect())
     }
 
     /// Add block to chain
     pub fn add_block(&self, chain_id: ChainId, block: Block) -> SlvrResult<()> {
-        let mut blocks = self.blocks.lock().unwrap();
-        blocks
-            .entry(chain_id)
-            .or_default()
-            .push(block);
+        let mut blocks = self.blocks.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
+        blocks.entry(chain_id).or_default().push(block);
         Ok(())
     }
 
     /// Get blocks for chain
     pub fn get_blocks(&self, chain_id: ChainId) -> SlvrResult<Vec<Block>> {
-        let blocks = self.blocks.lock().unwrap();
+        let blocks = self.blocks.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
         Ok(blocks.get(&chain_id).cloned().unwrap_or_default())
     }
 
     /// Submit transaction
     pub fn submit_transaction(&self, tx: ChainTransaction) -> SlvrResult<String> {
         let id = tx.id.clone();
-        let mut txs = self.transactions.lock().unwrap();
+        let mut txs = self.transactions.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
         txs.insert(id.clone(), tx);
         Ok(id)
     }
 
     /// Get transaction
     pub fn get_transaction(&self, id: &str) -> SlvrResult<Option<ChainTransaction>> {
-        let txs = self.transactions.lock().unwrap();
+        let txs = self.transactions.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
         Ok(txs.get(id).cloned())
     }
 
@@ -323,7 +320,7 @@ impl ChainwebNetwork {
         };
 
         let id = tx.id.clone();
-        let mut cross_txs = self.cross_chain_txs.lock().unwrap();
+        let mut cross_txs = self.cross_chain_txs.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
         cross_txs.insert(id.clone(), tx);
 
         Ok(id)
@@ -331,17 +328,13 @@ impl ChainwebNetwork {
 
     /// Get cross-chain transaction
     pub fn get_cross_chain_tx(&self, id: &str) -> SlvrResult<Option<CrossChainTransaction>> {
-        let cross_txs = self.cross_chain_txs.lock().unwrap();
+        let cross_txs = self.cross_chain_txs.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
         Ok(cross_txs.get(id).cloned())
     }
 
     /// Update cross-chain transaction status
-    pub fn update_cross_chain_status(
-        &self,
-        id: &str,
-        status: CrossChainStatus,
-    ) -> SlvrResult<()> {
-        let mut cross_txs = self.cross_chain_txs.lock().unwrap();
+    pub fn update_cross_chain_status(&self, id: &str, status: CrossChainStatus) -> SlvrResult<()> {
+        let mut cross_txs = self.cross_chain_txs.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
         if let Some(tx) = cross_txs.get_mut(id) {
             tx.status = status;
             if status == CrossChainStatus::Completed {
@@ -369,21 +362,15 @@ impl ChainwebNetwork {
         }
     }
 
-
-
     /// Get atomic swap
     pub fn get_atomic_swap(&self, id: &str) -> SlvrResult<Option<AtomicSwap>> {
-        let swaps = self.atomic_swaps.lock().unwrap();
+        let swaps = self.atomic_swaps.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
         Ok(swaps.get(id).cloned())
     }
 
     /// Update atomic swap status
-    pub fn update_atomic_swap_status(
-        &self,
-        id: &str,
-        status: AtomicSwapStatus,
-    ) -> SlvrResult<()> {
-        let mut swaps = self.atomic_swaps.lock().unwrap();
+    pub fn update_atomic_swap_status(&self, id: &str, status: AtomicSwapStatus) -> SlvrResult<()> {
+        let mut swaps = self.atomic_swaps.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
         if let Some(swap) = swaps.get_mut(id) {
             swap.status = status;
             if status == AtomicSwapStatus::Completed {
@@ -395,47 +382,43 @@ impl ChainwebNetwork {
 
     /// Connect peer
     pub fn connect_peer(&self, chain_id: ChainId, peer_address: String) -> SlvrResult<()> {
-        let mut peers = self.peer_connections.lock().unwrap();
-        peers
-            .entry(chain_id)
-            .or_default()
-            .push(peer_address);
+        let mut peers = self.peer_connections.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
+        peers.entry(chain_id).or_default().push(peer_address);
         Ok(())
     }
 
     /// Get peers for chain
     pub fn get_peers(&self, chain_id: ChainId) -> SlvrResult<Vec<String>> {
-        let peers = self.peer_connections.lock().unwrap();
+        let peers = self.peer_connections.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
         Ok(peers.get(&chain_id).cloned().unwrap_or_default())
     }
 
     /// Synchronize chain state with real implementation
     pub fn sync_chain_state(&self, chain_id: ChainId) -> SlvrResult<()> {
         // REAL IMPLEMENTATION: Full chain synchronization with network communication
-        
+
         // 1. Get current chain state
-        let chains = self.chains.lock().unwrap();
-        let chain = chains.get(&chain_id)
+        let chains = self.chains.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
+        let chain = chains
+            .get(&chain_id)
             .ok_or_else(|| SlvrError::RuntimeError {
                 message: format!("Chain {} not found", chain_id),
             })?
             .clone();
         drop(chains);
-        
+
         // 2. Get current block height
-        let blocks = self.blocks.lock().unwrap();
-        let current_height = blocks.get(&chain_id)
-            .map(|b| b.len() as u64)
-            .unwrap_or(0);
+        let blocks = self.blocks.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
+        let current_height = blocks.get(&chain_id).map(|b: &Vec<Block>| b.len() as u64).unwrap_or(0);
         drop(blocks);
-        
+
         // 3. Connect to peers and request missing blocks
         let peers = self.get_peers(chain_id)?;
         if peers.is_empty() {
             tracing::warn!("No peers available for chain {} synchronization", chain_id);
             return Ok(());
         }
-        
+
         // 4. For each peer, request blocks starting from current_height
         for peer in peers {
             // REAL IMPLEMENTATION: Full peer synchronization with network communication
@@ -453,7 +436,12 @@ impl ChainwebNetwork {
                     }
                 }
                 Err(e) => {
-                    tracing::warn!("Failed to sync with peer {} for chain {}: {}", peer, chain_id, e);
+                    tracing::warn!(
+                        "Failed to sync with peer {} for chain {}: {}",
+                        peer,
+                        chain_id,
+                        e
+                    );
                     // Continue with next peer on error
                     continue;
                 }
@@ -480,32 +468,32 @@ impl ChainwebNetwork {
         // 5. Atomic state updates
         // 6. Comprehensive error handling and recovery
         // 7. Exponential backoff for retries
-        
-        use std::net::ToSocketAddrs;
+
         use std::io::{Read, Write};
+        use std::net::ToSocketAddrs;
         use std::time::Duration;
-        
+
         tracing::debug!(
             "Starting peer sync: chain={}, peer={}, current_height={}",
-            chain_id, peer, current_height
+            chain_id,
+            peer,
+            current_height
         );
-        
+
         // 1. Parse peer address (format: "host:port")
         let peer_addr = match peer.parse::<std::net::SocketAddr>() {
             Ok(addr) => addr,
             Err(_) => {
                 // Try to resolve hostname
                 match format!("{}:8333", peer).to_socket_addrs() {
-                    Ok(mut addrs) => {
-                        match addrs.next() {
-                            Some(addr) => addr,
-                            None => {
-                                return Err(SlvrError::RuntimeError {
-                                    message: format!("Failed to resolve peer address: {}", peer),
-                                });
-                            }
+                    Ok(mut addrs) => match addrs.next() {
+                        Some(addr) => addr,
+                        None => {
+                            return Err(SlvrError::RuntimeError {
+                                message: format!("Failed to resolve peer address: {}", peer),
+                            });
                         }
-                    }
+                    },
                     Err(e) => {
                         return Err(SlvrError::RuntimeError {
                             message: format!("Invalid peer address '{}': {}", peer, e),
@@ -514,30 +502,31 @@ impl ChainwebNetwork {
                 }
             }
         };
-        
+
         // 2. Establish TCP connection with 30-second timeout
-        let mut stream = match std::net::TcpStream::connect_timeout(&peer_addr, Duration::from_secs(30)) {
-            Ok(s) => {
-                tracing::debug!("Connected to peer: {}", peer_addr);
-                s
-            }
-            Err(e) => {
-                tracing::warn!("Failed to connect to peer {}: {}", peer_addr, e);
-                return Err(SlvrError::RuntimeError {
-                    message: format!("Connection failed: {}", e),
-                });
-            }
-        };
-        
+        let mut stream =
+            match std::net::TcpStream::connect_timeout(&peer_addr, Duration::from_secs(30)) {
+                Ok(s) => {
+                    tracing::debug!("Connected to peer: {}", peer_addr);
+                    s
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to connect to peer {}: {}", peer_addr, e);
+                    return Err(SlvrError::RuntimeError {
+                        message: format!("Connection failed: {}", e),
+                    });
+                }
+            };
+
         // Set socket options
         let _ = stream.set_read_timeout(Some(Duration::from_secs(30)));
         let _ = stream.set_write_timeout(Some(Duration::from_secs(30)));
-        
+
         let mut blocks_synced = 0usize;
         let mut retry_count = 0u32;
         const MAX_RETRIES: u32 = 3;
         const MAX_BLOCKS_PER_REQUEST: u64 = 100;
-        
+
         loop {
             // 3. Build JSON-RPC request for blocks
             let request_id = uuid::Uuid::new_v4().to_string();
@@ -547,7 +536,7 @@ impl ChainwebNetwork {
                 "params": [chain_id.0, current_height + blocks_synced as u64, MAX_BLOCKS_PER_REQUEST],
                 "id": request_id
             });
-            
+
             let request_str = match serde_json::to_string(&json_request) {
                 Ok(s) => s,
                 Err(e) => {
@@ -556,13 +545,16 @@ impl ChainwebNetwork {
                     });
                 }
             };
-            
+
             // 4. Send JSON-RPC request
             if let Err(e) = stream.write_all(request_str.as_bytes()) {
                 retry_count += 1;
                 if retry_count >= MAX_RETRIES {
                     return Err(SlvrError::RuntimeError {
-                        message: format!("Failed to send request after {} retries: {}", MAX_RETRIES, e),
+                        message: format!(
+                            "Failed to send request after {} retries: {}",
+                            MAX_RETRIES, e
+                        ),
                     });
                 }
                 tracing::warn!("Failed to send request (retry {}): {}", retry_count, e);
@@ -570,7 +562,7 @@ impl ChainwebNetwork {
                 std::thread::sleep(Duration::from_millis(100 * (2_u64.pow(retry_count - 1))));
                 continue;
             }
-            
+
             // 5. Receive JSON-RPC response
             let mut buffer = vec![0u8; 1024 * 1024]; // 1MB buffer for blocks
             let bytes_read = match stream.read(&mut buffer) {
@@ -583,7 +575,10 @@ impl ChainwebNetwork {
                     retry_count += 1;
                     if retry_count >= MAX_RETRIES {
                         return Err(SlvrError::RuntimeError {
-                            message: format!("Failed to read response after {} retries: {}", MAX_RETRIES, e),
+                            message: format!(
+                                "Failed to read response after {} retries: {}",
+                                MAX_RETRIES, e
+                            ),
                         });
                     }
                     tracing::warn!("Failed to read response (retry {}): {}", retry_count, e);
@@ -591,7 +586,7 @@ impl ChainwebNetwork {
                     continue;
                 }
             };
-            
+
             // 6. Parse JSON-RPC response
             let response_str = match String::from_utf8(buffer[..bytes_read].to_vec()) {
                 Ok(s) => s,
@@ -601,7 +596,7 @@ impl ChainwebNetwork {
                     });
                 }
             };
-            
+
             let response: serde_json::Value = match serde_json::from_str(&response_str) {
                 Ok(v) => v,
                 Err(e) => {
@@ -610,7 +605,7 @@ impl ChainwebNetwork {
                     });
                 }
             };
-            
+
             // 7. Extract blocks from response
             let blocks = match response.get("result").and_then(|r| r.as_array()) {
                 Some(b) => b,
@@ -621,12 +616,12 @@ impl ChainwebNetwork {
                     break; // No more blocks
                 }
             };
-            
+
             if blocks.is_empty() {
                 tracing::debug!("No more blocks to sync from peer");
                 break;
             }
-            
+
             // 8. Validate and process each block
             for block_json in blocks {
                 // Parse block data
@@ -637,7 +632,7 @@ impl ChainwebNetwork {
                         continue;
                     }
                 };
-                
+
                 let block_hash = match block_json.get("hash").and_then(|h| h.as_str()) {
                     Some(h) => h,
                     None => {
@@ -645,7 +640,7 @@ impl ChainwebNetwork {
                         continue;
                     }
                 };
-                
+
                 let parent_hash = match block_json.get("parent_hash").and_then(|h| h.as_str()) {
                     Some(h) => h,
                     None => {
@@ -653,7 +648,7 @@ impl ChainwebNetwork {
                         continue;
                     }
                 };
-                
+
                 let timestamp = match block_json.get("timestamp").and_then(|t| t.as_u64()) {
                     Some(t) => t,
                     None => {
@@ -661,7 +656,7 @@ impl ChainwebNetwork {
                         continue;
                     }
                 };
-                
+
                 let difficulty = match block_json.get("difficulty").and_then(|d| d.as_u64()) {
                     Some(d) => d,
                     None => {
@@ -669,7 +664,7 @@ impl ChainwebNetwork {
                         continue;
                     }
                 };
-                
+
                 let nonce = match block_json.get("nonce").and_then(|n| n.as_u64()) {
                     Some(n) => n,
                     None => {
@@ -677,7 +672,7 @@ impl ChainwebNetwork {
                         continue;
                     }
                 };
-                
+
                 let merkle_root = match block_json.get("merkle_root").and_then(|m| m.as_str()) {
                     Some(m) => m,
                     None => {
@@ -685,37 +680,49 @@ impl ChainwebNetwork {
                         continue;
                     }
                 };
-                
+
                 // 9. Validate block header format
                 if block_hash.len() != 128 || parent_hash.len() != 128 || merkle_root.len() != 128 {
                     tracing::warn!("Invalid hash format in block {}", block_height);
                     continue;
                 }
-                
+
                 // 10. Verify SHA-512 proof-of-work meets difficulty target
                 let block_header = format!(
                     "{}:{}:{}:{}:{}",
                     parent_hash, merkle_root, timestamp, difficulty, nonce
                 );
-                
+
                 let mut hasher = sha2::Sha512::new();
                 hasher.update(block_header.as_bytes());
                 let pow_hash = hasher.finalize();
-                
+
                 // Convert hash to integer for difficulty comparison
                 let hash_int = u128::from_le_bytes([
-                    pow_hash[0], pow_hash[1], pow_hash[2], pow_hash[3],
-                    pow_hash[4], pow_hash[5], pow_hash[6], pow_hash[7],
-                    pow_hash[8], pow_hash[9], pow_hash[10], pow_hash[11],
-                    pow_hash[12], pow_hash[13], pow_hash[14], pow_hash[15],
+                    pow_hash[0],
+                    pow_hash[1],
+                    pow_hash[2],
+                    pow_hash[3],
+                    pow_hash[4],
+                    pow_hash[5],
+                    pow_hash[6],
+                    pow_hash[7],
+                    pow_hash[8],
+                    pow_hash[9],
+                    pow_hash[10],
+                    pow_hash[11],
+                    pow_hash[12],
+                    pow_hash[13],
+                    pow_hash[14],
+                    pow_hash[15],
                 ]);
-                
+
                 let target = u128::MAX / (difficulty as u128 + 1);
                 if hash_int > target {
                     tracing::warn!("Block {} failed PoW verification", block_height);
                     continue;
                 }
-                
+
                 // 11. Validate merkle root against transactions
                 let transactions = match block_json.get("transactions").and_then(|t| t.as_array()) {
                     Some(txs) => txs,
@@ -724,7 +731,7 @@ impl ChainwebNetwork {
                         continue;
                     }
                 };
-                
+
                 // Calculate merkle root from transactions
                 let mut tx_hashes = Vec::new();
                 for tx in transactions {
@@ -734,7 +741,7 @@ impl ChainwebNetwork {
                         tx_hashes.push(hex::encode(hasher.finalize()));
                     }
                 }
-                
+
                 let calculated_merkle = if !tx_hashes.is_empty() {
                     let mut hasher = sha2::Sha512::new();
                     for hash in &tx_hashes {
@@ -744,34 +751,34 @@ impl ChainwebNetwork {
                 } else {
                     String::new()
                 };
-                
+
                 if calculated_merkle != merkle_root {
                     tracing::warn!("Block {} merkle root mismatch", block_height);
                     continue;
                 }
-                
+
                 // 12. Check block timestamp is reasonable (within 2 hours of now)
                 let now = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
                     .as_secs();
-                
+
                 if timestamp > now + 7200 || timestamp + 7200 < now {
                     tracing::warn!("Block {} has unreasonable timestamp", block_height);
                     continue;
                 }
-                
+
                 // 13. Verify parent hash matches previous block (if not genesis)
                 if block_height > 0 && blocks_synced > 0 {
                     // PRODUCTION IMPLEMENTATION: Verify parent hash against stored previous block
                     // This ensures the blockchain is properly linked
-                    
+
                     // Get the previous block from our local blockchain
-                    let local_blocks = self.blocks.lock().unwrap();
+                    let local_blocks = self.blocks.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
                     if let Some(prev_blocks) = local_blocks.get(&chain_id) {
                         if !prev_blocks.is_empty() {
                             let prev_block = &prev_blocks[prev_blocks.len() - 1];
-                            
+
                             // Verify parent hash matches
                             if prev_block.hash != parent_hash {
                                 tracing::warn!(
@@ -782,7 +789,7 @@ impl ChainwebNetwork {
                                 );
                                 continue;
                             }
-                            
+
                             // Verify block height is sequential
                             if block_height != prev_blocks.len() as u64 {
                                 tracing::warn!(
@@ -796,29 +803,31 @@ impl ChainwebNetwork {
                         }
                     }
                 }
-                
+
                 // 14. Block is valid - add to blockchain atomically
                 tracing::debug!(
                     "Validated block {} from peer (PoW verified, merkle root valid)",
                     block_height
                 );
-                
+
                 blocks_synced += 1;
                 retry_count = 0; // Reset retry count on success
             }
-            
+
             // 15. If we got fewer blocks than requested, we've reached the tip
             if (blocks.len() as u64) < MAX_BLOCKS_PER_REQUEST {
                 tracing::debug!("Reached peer's chain tip");
                 break;
             }
         }
-        
+
         tracing::info!(
             "Synced {} blocks from peer {} for chain {}",
-            blocks_synced, peer, chain_id
+            blocks_synced,
+            peer,
+            chain_id
         );
-        
+
         Ok(blocks_synced)
     }
 
@@ -830,56 +839,58 @@ impl ChainwebNetwork {
         proof: &[u8],
     ) -> SlvrResult<bool> {
         // REAL IMPLEMENTATION: Full cross-chain proof verification with SHA-512
-        
+
         // 1. Validate proof format and size
         if proof.is_empty() {
             tracing::warn!("Empty proof provided for cross-chain verification");
             return Ok(false);
         }
-        
+
         if proof.len() > 2048 {
             tracing::warn!("Proof too large: {} bytes (max 2048)", proof.len());
             return Ok(false);
         }
-        
+
         // 2. Verify both chains exist
-        let chains = self.chains.lock().unwrap();
-        let source = chains.get(&source_chain)
+        let chains = self.chains.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
+        let source = chains
+            .get(&source_chain)
             .ok_or_else(|| SlvrError::RuntimeError {
                 message: format!("Source chain {} not found", source_chain),
             })?
             .clone();
-        let target = chains.get(&target_chain)
+        let target = chains
+            .get(&target_chain)
             .ok_or_else(|| SlvrError::RuntimeError {
                 message: format!("Target chain {} not found", target_chain),
             })?
             .clone();
         drop(chains);
-        
+
         // 3. Verify proof structure: [signature (64 bytes) | data]
         if proof.len() < 64 {
             tracing::warn!("Proof too small: {} bytes (minimum 64)", proof.len());
             return Ok(false);
         }
-        
+
         let signature = &proof[0..64];
         let proof_data = &proof[64..];
-        
+
         // 4. Verify proof data contains valid transaction
         // Use SHA-512 for hashing (production-grade)
         let mut hasher = Sha512::new();
         hasher.update(proof_data);
         let proof_hash = hasher.finalize();
         let proof_hash_hex = format!("{:x}", proof_hash);
-        
+
         // 5. Check if proof hash exists in source chain blocks
-        let blocks = self.blocks.lock().unwrap();
+        let blocks = self.blocks.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
         let empty_blocks = vec![];
         let source_blocks = blocks.get(&source_chain).unwrap_or(&empty_blocks);
-        
+
         let mut proof_exists = false;
         let mut proof_block_height = 0u64;
-        
+
         for (idx, block) in source_blocks.iter().enumerate() {
             // Verify block hash matches proof
             if block.hash == proof_hash_hex {
@@ -887,7 +898,7 @@ impl ChainwebNetwork {
                 proof_block_height = idx as u64;
                 break;
             }
-            
+
             // Also check if proof data is in block transactions
             for tx in &block.transactions {
                 let mut tx_hasher = Sha512::new();
@@ -898,21 +909,21 @@ impl ChainwebNetwork {
                     break;
                 }
             }
-            
+
             if proof_exists {
                 break;
             }
         }
-        
+
         if !proof_exists {
             tracing::warn!("Proof hash not found in source chain {}", source_chain);
             return Ok(false);
         }
-        
+
         // 6. Verify confirmation count (must have at least 6 confirmations)
         let source_height = source_blocks.len() as u64;
         let confirmations = source_height.saturating_sub(proof_block_height);
-        
+
         if confirmations < 6 {
             tracing::warn!(
                 "Insufficient confirmations: {} (required: 6) for chain {}",
@@ -921,26 +932,29 @@ impl ChainwebNetwork {
             );
             return Ok(false);
         }
-        
+
         // 7. PRODUCTION IMPLEMENTATION: Verify signature using 512-bit schemes with SHA-512
         // This is real cryptographic signature verification for quantum-resistant schemes
-        
+
         // Signature size validation for 512-bit schemes:
         // Secp512r1: 132 bytes (66-byte key)
         // SPHINCS+: 49,856 bytes (variable, typically ~49KB)
         // Dilithium3: 3,366 bytes
         // For cross-chain verification, we accept variable-length signatures
         if signature.is_empty() || signature.len() > 50000 {
-            tracing::warn!("Invalid signature length: {} (expected 1-50000 bytes for 512-bit schemes)", signature.len());
+            tracing::warn!(
+                "Invalid signature length: {} (expected 1-50000 bytes for 512-bit schemes)",
+                signature.len()
+            );
             return Ok(false);
         }
-        
+
         // Verify signature is not all zeros (basic sanity check)
         if signature.iter().all(|&b| b == 0) {
             tracing::warn!("Invalid signature: all zeros");
             return Ok(false);
         }
-        
+
         // Extract public key from proof (variable length for 512-bit schemes)
         // Secp512r1: 66 bytes
         // SPHINCS+: 32 bytes
@@ -949,31 +963,31 @@ impl ChainwebNetwork {
             tracing::warn!("Proof too short for public key extraction (minimum 32 bytes)");
             return Ok(false);
         }
-        
+
         // For cross-chain verification, extract public key (first 66 bytes for Secp512r1)
         let public_key_len = std::cmp::min(66, proof.len());
         let public_key_bytes = &proof[..public_key_len];
-        
+
         // Reconstruct the message that was signed
         // Format: source_chain_id || target_chain_id || proof_data
         let mut message = Vec::new();
         message.extend_from_slice(&source_chain.0.to_le_bytes());
         message.extend_from_slice(&target_chain.0.to_le_bytes());
         message.extend_from_slice(&proof[32..]);
-        
+
         // Verify using SHA-512 HMAC (512-bit cryptography)
         use hmac::{Hmac, Mac};
         use sha2::Sha512;
-        
+
         type HmacSha512 = Hmac<Sha512>;
-        
-        let mut mac = HmacSha512::new_from_slice(public_key_bytes)
-            .map_err(|_| SlvrError::RuntimeError {
+
+        let mut mac =
+            HmacSha512::new_from_slice(public_key_bytes).map_err(|_| SlvrError::RuntimeError {
                 message: "Invalid public key format for HMAC".to_string(),
             })?;
-        
+
         mac.update(&message);
-        
+
         // Verify the signature matches the computed HMAC
         match mac.verify_slice(signature) {
             Ok(_) => {
@@ -984,11 +998,11 @@ impl ChainwebNetwork {
                 return Ok(false);
             }
         }
-        
+
         // 8. Verify target chain can execute this proof
         // Check if both chains have compatible consensus types
         let compatible = source.consensus_type == target.consensus_type;
-        
+
         if !compatible {
             tracing::warn!(
                 "Incompatible consensus types: source={}, target={}",
@@ -997,20 +1011,26 @@ impl ChainwebNetwork {
             );
             return Ok(false);
         }
-        
+
         // 9. Verify proof timestamp is recent (within 24 hours)
         if proof_data.len() >= 16 {
             let timestamp_bytes = &proof_data[8..16];
             let timestamp = u64::from_le_bytes([
-                timestamp_bytes[0], timestamp_bytes[1], timestamp_bytes[2], timestamp_bytes[3],
-                timestamp_bytes[4], timestamp_bytes[5], timestamp_bytes[6], timestamp_bytes[7],
+                timestamp_bytes[0],
+                timestamp_bytes[1],
+                timestamp_bytes[2],
+                timestamp_bytes[3],
+                timestamp_bytes[4],
+                timestamp_bytes[5],
+                timestamp_bytes[6],
+                timestamp_bytes[7],
             ]);
-            
+
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs();
-            
+
             let age = now.saturating_sub(timestamp);
             if age > 86400 {
                 // 24 hours
@@ -1018,7 +1038,7 @@ impl ChainwebNetwork {
                 return Ok(false);
             }
         }
-        
+
         tracing::info!(
             "Cross-chain proof verified: source={}, target={}, confirmations={}, hash={}",
             source_chain,
@@ -1026,7 +1046,7 @@ impl ChainwebNetwork {
             confirmations,
             &proof_hash_hex[..16]
         );
-        
+
         Ok(true)
     }
 
@@ -1039,13 +1059,13 @@ impl ChainwebNetwork {
 
     /// Get network statistics
     pub fn get_network_stats(&self) -> SlvrResult<NetworkStats> {
-        let chains = self.chains.lock().unwrap();
-        let blocks = self.blocks.lock().unwrap();
-        let txs = self.transactions.lock().unwrap();
-        let cross_txs = self.cross_chain_txs.lock().unwrap();
-        let swaps = self.atomic_swaps.lock().unwrap();
+        let chains = self.chains.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
+        let blocks = self.blocks.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
+        let txs = self.transactions.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
+        let cross_txs = self.cross_chain_txs.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
+        let swaps = self.atomic_swaps.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
 
-        let total_blocks: u64 = blocks.values().map(|b| b.len() as u64).sum();
+        let total_blocks: u64 = blocks.values().map(|b: &Vec<Block>| b.len() as u64).sum();
         let total_transactions = txs.len() as u64;
         let total_cross_chain = cross_txs.len() as u64;
         let total_swaps = swaps.len() as u64;
@@ -1127,10 +1147,7 @@ mod tests {
     fn test_atomic_swap() {
         let network = ChainwebNetwork::new();
         let swap = network
-            .initiate_atomic_swap_builder(
-                "alice".to_string(),
-                "bob".to_string(),
-            )
+            .initiate_atomic_swap_builder("alice".to_string(), "bob".to_string())
             .with_source_chain(ChainId::new(0))
             .with_target_chain(ChainId::new(1))
             .with_source_asset("SLVR".to_string())
@@ -1140,8 +1157,8 @@ mod tests {
             .build();
 
         let swap_id = swap.id.clone();
-        
-        let mut swaps = network.atomic_swaps.lock().unwrap();
+
+        let mut swaps = network.atomic_swaps.lock().map_err(|e| SlvrError::LockError(format!("Failed to acquire lock: {}", e)))?;
         swaps.insert(swap_id.clone(), swap);
         drop(swaps);
 

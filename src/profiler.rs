@@ -4,11 +4,11 @@
 //! fuel consumption, and identifying bottlenecks in smart contracts.
 
 use crate::error::SlvrResult;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 /// Performance metric
@@ -190,10 +190,19 @@ impl Profiler {
             timestamp: Instant::now(),
         };
 
-        let mut events = self.events.lock().unwrap();
+        let mut events = self
+            .events
+            .lock()
+            .map_err(|e| crate::error::SlvrError::RuntimeError {
+                message: format!("Failed to acquire events lock: {}", e),
+            })?;
         events.push(event);
 
-        let mut stack = self.current_function_stack.lock().unwrap();
+        let mut stack = self.current_function_stack.lock().map_err(|e| {
+            crate::error::SlvrError::RuntimeError {
+                message: format!("Failed to acquire function stack lock: {}", e),
+            }
+        })?;
         stack.push(name);
 
         Ok(())
@@ -206,10 +215,19 @@ impl Profiler {
             timestamp: Instant::now(),
         };
 
-        let mut events = self.events.lock().unwrap();
+        let mut events = self
+            .events
+            .lock()
+            .map_err(|e| crate::error::SlvrError::RuntimeError {
+                message: format!("Failed to acquire events lock: {}", e),
+            })?;
         events.push(event);
 
-        let mut stack = self.current_function_stack.lock().unwrap();
+        let mut stack = self.current_function_stack.lock().map_err(|e| {
+            crate::error::SlvrError::RuntimeError {
+                message: format!("Failed to acquire function stack lock: {}", e),
+            }
+        })?;
         if stack.last() == Some(&name) {
             stack.pop();
         }
@@ -224,7 +242,12 @@ impl Profiler {
             timestamp: Instant::now(),
         };
 
-        let mut events = self.events.lock().unwrap();
+        let mut events = self
+            .events
+            .lock()
+            .map_err(|e| crate::error::SlvrError::RuntimeError {
+                message: format!("Failed to acquire events lock: {}", e),
+            })?;
         events.push(event);
 
         Ok(())
@@ -237,7 +260,12 @@ impl Profiler {
             timestamp: Instant::now(),
         };
 
-        let mut events = self.events.lock().unwrap();
+        let mut events = self
+            .events
+            .lock()
+            .map_err(|e| crate::error::SlvrError::RuntimeError {
+                message: format!("Failed to acquire events lock: {}", e),
+            })?;
         events.push(event);
 
         Ok(())
@@ -247,10 +275,20 @@ impl Profiler {
     pub fn memory_allocate(&self, size: u64) -> SlvrResult<()> {
         let event = ProfilerEvent::MemoryAllocate { size };
 
-        let mut events = self.events.lock().unwrap();
+        let mut events = self
+            .events
+            .lock()
+            .map_err(|e| crate::error::SlvrError::RuntimeError {
+                message: format!("Failed to acquire events lock: {}", e),
+            })?;
         events.push(event);
 
-        let mut profile = self.profile.lock().unwrap();
+        let mut profile =
+            self.profile
+                .lock()
+                .map_err(|e| crate::error::SlvrError::RuntimeError {
+                    message: format!("Failed to acquire profile lock: {}", e),
+                })?;
         profile.memory_profile.allocated += size;
         profile.memory_profile.current_usage += size;
         profile.memory_profile.allocations += 1;
@@ -266,12 +304,23 @@ impl Profiler {
     pub fn memory_free(&self, size: u64) -> SlvrResult<()> {
         let event = ProfilerEvent::MemoryFree { size };
 
-        let mut events = self.events.lock().unwrap();
+        let mut events = self
+            .events
+            .lock()
+            .map_err(|e| crate::error::SlvrError::RuntimeError {
+                message: format!("Failed to acquire events lock: {}", e),
+            })?;
         events.push(event);
 
-        let mut profile = self.profile.lock().unwrap();
+        let mut profile =
+            self.profile
+                .lock()
+                .map_err(|e| crate::error::SlvrError::RuntimeError {
+                    message: format!("Failed to acquire profile lock: {}", e),
+                })?;
         profile.memory_profile.freed += size;
-        profile.memory_profile.current_usage = profile.memory_profile.current_usage.saturating_sub(size);
+        profile.memory_profile.current_usage =
+            profile.memory_profile.current_usage.saturating_sub(size);
         profile.memory_profile.deallocations += 1;
 
         Ok(())
@@ -284,10 +333,20 @@ impl Profiler {
             operation: operation.clone(),
         };
 
-        let mut events = self.events.lock().unwrap();
+        let mut events = self
+            .events
+            .lock()
+            .map_err(|e| crate::error::SlvrError::RuntimeError {
+                message: format!("Failed to acquire events lock: {}", e),
+            })?;
         events.push(event);
 
-        let mut profile = self.profile.lock().unwrap();
+        let mut profile =
+            self.profile
+                .lock()
+                .map_err(|e| crate::error::SlvrError::RuntimeError {
+                    message: format!("Failed to acquire profile lock: {}", e),
+                })?;
         profile.fuel_profile.total_fuel += amount;
 
         *profile
@@ -296,7 +355,11 @@ impl Profiler {
             .entry(operation.clone())
             .or_insert(0) += amount;
 
-        let stack = self.current_function_stack.lock().unwrap();
+        let stack = self.current_function_stack.lock().map_err(|e| {
+            crate::error::SlvrError::RuntimeError {
+                message: format!("Failed to acquire function stack lock: {}", e),
+            }
+        })?;
         if let Some(func) = stack.last() {
             *profile
                 .fuel_profile
@@ -310,7 +373,12 @@ impl Profiler {
 
     /// Finalize profiling
     pub fn finalize(&self) -> SlvrResult<ExecutionProfile> {
-        let mut profile = self.profile.lock().unwrap();
+        let mut profile =
+            self.profile
+                .lock()
+                .map_err(|e| crate::error::SlvrError::RuntimeError {
+                    message: format!("Failed to acquire profile lock: {}", e),
+                })?;
         profile.end_time = Some(Utc::now());
         profile.duration_ms = self.start_time.elapsed().as_secs_f64() * 1000.0;
 
@@ -322,7 +390,12 @@ impl Profiler {
 
     /// Process recorded events
     fn process_events(&self, profile: &mut ExecutionProfile) -> SlvrResult<()> {
-        let events = self.events.lock().unwrap();
+        let events = self
+            .events
+            .lock()
+            .map_err(|e| crate::error::SlvrError::RuntimeError {
+                message: format!("Failed to acquire events lock: {}", e),
+            })?;
 
         let mut function_times: HashMap<String, Vec<Duration>> = HashMap::new();
         let mut operation_times: HashMap<String, Vec<Duration>> = HashMap::new();
@@ -345,10 +418,16 @@ impl Profiler {
                         }
                     }
                 }
-                ProfilerEvent::OperationStart { operation, timestamp } => {
+                ProfilerEvent::OperationStart {
+                    operation,
+                    timestamp,
+                } => {
                     operation_stack.push((operation.clone(), *timestamp));
                 }
-                ProfilerEvent::OperationEnd { operation, timestamp } => {
+                ProfilerEvent::OperationEnd {
+                    operation,
+                    timestamp,
+                } => {
                     if let Some((op_name, start_time)) = operation_stack.pop() {
                         if op_name == *operation {
                             let duration = timestamp.duration_since(start_time);
@@ -426,7 +505,8 @@ impl Profiler {
         if !profile.operation_profiles.is_empty() {
             let total_ops: u64 = profile.operation_profiles.values().map(|op| op.count).sum();
             if total_ops > 0 {
-                profile.fuel_profile.average_fuel_per_op = profile.fuel_profile.total_fuel / total_ops;
+                profile.fuel_profile.average_fuel_per_op =
+                    profile.fuel_profile.total_fuel / total_ops;
             }
         }
 
@@ -435,37 +515,67 @@ impl Profiler {
 
     /// Get profile
     pub fn get_profile(&self) -> SlvrResult<ExecutionProfile> {
-        let profile = self.profile.lock().unwrap();
+        let profile = self
+            .profile
+            .lock()
+            .map_err(|e| crate::error::SlvrError::RuntimeError {
+                message: format!("Failed to acquire profile lock: {}", e),
+            })?;
         Ok(profile.clone())
     }
 
     /// Get function profile
     pub fn get_function_profile(&self, name: &str) -> SlvrResult<Option<FunctionProfile>> {
-        let profile = self.profile.lock().unwrap();
+        let profile = self
+            .profile
+            .lock()
+            .map_err(|e| crate::error::SlvrError::RuntimeError {
+                message: format!("Failed to acquire profile lock: {}", e),
+            })?;
         Ok(profile.function_profiles.get(name).cloned())
     }
 
     /// Get operation profile
     pub fn get_operation_profile(&self, operation: &str) -> SlvrResult<Option<OperationProfile>> {
-        let profile = self.profile.lock().unwrap();
+        let profile = self
+            .profile
+            .lock()
+            .map_err(|e| crate::error::SlvrError::RuntimeError {
+                message: format!("Failed to acquire profile lock: {}", e),
+            })?;
         Ok(profile.operation_profiles.get(operation).cloned())
     }
 
     /// Get memory profile
     pub fn get_memory_profile(&self) -> SlvrResult<MemoryProfile> {
-        let profile = self.profile.lock().unwrap();
+        let profile = self
+            .profile
+            .lock()
+            .map_err(|e| crate::error::SlvrError::RuntimeError {
+                message: format!("Failed to acquire profile lock: {}", e),
+            })?;
         Ok(profile.memory_profile.clone())
     }
 
     /// Get fuel profile
     pub fn get_fuel_profile(&self) -> SlvrResult<FuelProfile> {
-        let profile = self.profile.lock().unwrap();
+        let profile = self
+            .profile
+            .lock()
+            .map_err(|e| crate::error::SlvrError::RuntimeError {
+                message: format!("Failed to acquire profile lock: {}", e),
+            })?;
         Ok(profile.fuel_profile.clone())
     }
 
     /// Get hotspots (functions/operations taking most time)
     pub fn get_hotspots(&self, limit: usize) -> SlvrResult<Vec<(String, f64)>> {
-        let profile = self.profile.lock().unwrap();
+        let profile = self
+            .profile
+            .lock()
+            .map_err(|e| crate::error::SlvrError::RuntimeError {
+                message: format!("Failed to acquire profile lock: {}", e),
+            })?;
 
         let mut hotspots: Vec<(String, f64)> = profile
             .function_profiles
@@ -481,7 +591,12 @@ impl Profiler {
 
     /// Get bottlenecks (operations with highest fuel consumption)
     pub fn get_bottlenecks(&self, limit: usize) -> SlvrResult<Vec<(String, u64)>> {
-        let profile = self.profile.lock().unwrap();
+        let profile = self
+            .profile
+            .lock()
+            .map_err(|e| crate::error::SlvrError::RuntimeError {
+                message: format!("Failed to acquire profile lock: {}", e),
+            })?;
 
         let mut bottlenecks: Vec<(String, u64)> = profile
             .fuel_profile
@@ -498,18 +613,33 @@ impl Profiler {
 
     /// Generate report
     pub fn generate_report(&self) -> SlvrResult<String> {
-        let profile = self.profile.lock().unwrap();
+        let profile = self
+            .profile
+            .lock()
+            .map_err(|e| crate::error::SlvrError::RuntimeError {
+                message: format!("Failed to acquire profile lock: {}", e),
+            })?;
 
         let mut report = String::new();
         report.push_str(&format!("=== Profiling Report: {} ===\n", profile.name));
         report.push_str(&format!("Duration: {:.2}ms\n", profile.duration_ms));
-        report.push_str(&format!("Total Fuel: {}\n", profile.fuel_profile.total_fuel));
-        report.push_str(&format!("Peak Memory: {} bytes\n", profile.memory_profile.peak_usage));
+        report.push_str(&format!(
+            "Total Fuel: {}\n",
+            profile.fuel_profile.total_fuel
+        ));
+        report.push_str(&format!(
+            "Peak Memory: {} bytes\n",
+            profile.memory_profile.peak_usage
+        ));
         report.push('\n');
 
         report.push_str("=== Top Functions ===\n");
         let mut functions: Vec<_> = profile.function_profiles.values().collect();
-        functions.sort_by(|a, b| b.total_time_ms.partial_cmp(&a.total_time_ms).unwrap_or(std::cmp::Ordering::Equal));
+        functions.sort_by(|a, b| {
+            b.total_time_ms
+                .partial_cmp(&a.total_time_ms)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         for func in functions.iter().take(10) {
             report.push_str(&format!(
                 "{}: {:.2}ms (calls: {}, avg: {:.2}ms)\n",
@@ -519,7 +649,11 @@ impl Profiler {
 
         report.push_str("\n=== Top Operations ===\n");
         let mut operations: Vec<_> = profile.operation_profiles.values().collect();
-        operations.sort_by(|a, b| b.total_time_ms.partial_cmp(&a.total_time_ms).unwrap_or(std::cmp::Ordering::Equal));
+        operations.sort_by(|a, b| {
+            b.total_time_ms
+                .partial_cmp(&a.total_time_ms)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         for op in operations.iter().take(10) {
             report.push_str(&format!(
                 "{}: {:.2}ms (count: {}, avg: {:.2}ms, fuel/op: {})\n",
@@ -569,8 +703,12 @@ mod tests {
     #[test]
     fn test_fuel_profiling() {
         let profiler = Profiler::new("test".to_string());
-        profiler.consume_fuel(100, "operation1".to_string()).unwrap();
-        profiler.consume_fuel(200, "operation2".to_string()).unwrap();
+        profiler
+            .consume_fuel(100, "operation1".to_string())
+            .unwrap();
+        profiler
+            .consume_fuel(200, "operation2".to_string())
+            .unwrap();
 
         let profile = profiler.get_profile().unwrap();
         assert_eq!(profile.fuel_profile.total_fuel, 300);

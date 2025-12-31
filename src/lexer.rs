@@ -247,7 +247,13 @@ impl Lexer {
             '"' => self.read_string()?,
             _ if ch.is_ascii_digit() => self.read_number()?,
             _ if ch.is_alphabetic() || ch == '_' => self.read_identifier(),
-            _ => return Err(SlvrError::lexer(line, column, format!("unexpected character '{}'", ch))),
+            _ => {
+                return Err(SlvrError::lexer(
+                    line,
+                    column,
+                    format!("unexpected character '{}'", ch),
+                ))
+            }
         };
 
         Ok(Token::new(token_type, line, column))

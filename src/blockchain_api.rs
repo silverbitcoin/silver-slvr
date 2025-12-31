@@ -3,13 +3,13 @@
 
 use crate::error::{SlvrError, SlvrResult};
 use crate::transaction::TransactionStatus;
-use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque};
-use std::sync::Arc;
-use parking_lot::RwLock;
 use chrono::{DateTime, Utc};
-use sha2::{Sha512, Digest};
+use parking_lot::RwLock;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha512};
+use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 
 /// Block header
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -28,8 +28,13 @@ impl BlockHeader {
         let mut hasher = Sha512::new();
         let header_str = format!(
             "{}{}{}{}{}{}{}",
-            self.version, self.previous_hash, self.merkle_root,
-            self.timestamp.timestamp(), self.difficulty, self.nonce, self.miner_address
+            self.version,
+            self.previous_hash,
+            self.merkle_root,
+            self.timestamp.timestamp(),
+            self.difficulty,
+            self.nonce,
+            self.miner_address
         );
         hasher.update(header_str.as_bytes());
         format!("0x{:x}", hasher.finalize())
@@ -101,7 +106,11 @@ impl Block {
             let mut next_level = Vec::new();
             for i in (0..hashes.len()).step_by(2) {
                 let left = &hashes[i];
-                let right = if i + 1 < hashes.len() { &hashes[i + 1] } else { left };
+                let right = if i + 1 < hashes.len() {
+                    &hashes[i + 1]
+                } else {
+                    left
+                };
 
                 let mut hasher = Sha512::new();
                 hasher.update(format!("{}{}", left, right).as_bytes());
@@ -110,7 +119,10 @@ impl Block {
             hashes = next_level;
         }
 
-        hashes.into_iter().next().unwrap_or_else(|| "0x0".to_string())
+        hashes
+            .into_iter()
+            .next()
+            .unwrap_or_else(|| "0x0".to_string())
     }
 
     pub fn verify(&self) -> SlvrResult<()> {
@@ -309,7 +321,11 @@ impl BlockchainState {
         let height = self.current_height.load(Ordering::SeqCst);
         if block.height != height + 1 {
             return Err(SlvrError::RuntimeError {
-                message: format!("Invalid block height: expected {}, got {}", height + 1, block.height),
+                message: format!(
+                    "Invalid block height: expected {}, got {}",
+                    height + 1,
+                    block.height
+                ),
             });
         }
 
@@ -360,7 +376,8 @@ impl BlockchainState {
         }
 
         self.current_height.store(block.height, Ordering::SeqCst);
-        self.total_gas_used.fetch_add(block.gas_used, Ordering::SeqCst);
+        self.total_gas_used
+            .fetch_add(block.gas_used, Ordering::SeqCst);
 
         let mut status = self.network_status.write();
         status.current_block_height = block.height;
@@ -536,10 +553,10 @@ impl BlockchainState {
     pub fn add_pending_transaction(&self, tx: BlockTransaction) -> SlvrResult<()> {
         self.validate_transaction(&tx)?;
         self.pending_transactions.write().push_back(tx);
-        
+
         let mut status = self.network_status.write();
         status.pending_transactions = self.pending_transactions.read().len() as u64;
-        
+
         Ok(())
     }
 
@@ -553,10 +570,13 @@ impl BlockchainState {
 
     pub fn get_transaction_receipt(&self, tx_hash: &str) -> SlvrResult<TransactionReceipt> {
         let tx = self.get_transaction(tx_hash)?;
-        
-        let block_number = self.blocks.read().values().find(|b| {
-            b.transactions.iter().any(|t| t.hash == tx_hash)
-        }).map(|b| b.height);
+
+        let block_number = self
+            .blocks
+            .read()
+            .values()
+            .find(|b| b.transactions.iter().any(|t| t.hash == tx_hash))
+            .map(|b| b.height);
 
         Ok(TransactionReceipt {
             transaction_hash: tx_hash.to_string(),
@@ -622,7 +642,8 @@ impl BlockchainState {
             0
         };
 
-        self.get_blocks_range(start, current_height).unwrap_or_default()
+        self.get_blocks_range(start, current_height)
+            .unwrap_or_default()
     }
 
     pub fn get_mempool_size(&self) -> usize {
@@ -630,11 +651,7 @@ impl BlockchainState {
     }
 
     pub fn get_total_supply(&self) -> u64 {
-        self.accounts
-            .read()
-            .values()
-            .map(|acc| acc.balance)
-            .sum()
+        self.accounts.read().values().map(|acc| acc.balance).sum()
     }
 
     pub fn get_average_block_time(&self) -> u64 {
@@ -837,7 +854,7 @@ mod tests {
     fn test_merkle_root() {
         let tx1 = BlockTransaction::new("alice".to_string(), "bob".to_string(), 100, 10, 0);
         let tx2 = BlockTransaction::new("bob".to_string(), "charlie".to_string(), 50, 5, 0);
-        
+
         let merkle = Block::calculate_merkle_root(&vec![tx1, tx2]);
         assert!(!merkle.is_empty());
     }

@@ -5,9 +5,9 @@
 
 use crate::error::{SlvrError, SlvrResult};
 use crate::value::Value;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 /// Represents a contract version
@@ -201,12 +201,7 @@ impl UpgradeManager {
     pub fn get_version(&self, contract_name: &str, version: &str) -> SlvrResult<ContractVersion> {
         self.versions
             .get(contract_name)
-            .and_then(|versions| {
-                versions
-                    .iter()
-                    .find(|v| v.version == version)
-                    .cloned()
-            })
+            .and_then(|versions| versions.iter().find(|v| v.version == version).cloned())
             .ok_or_else(|| SlvrError::RuntimeError {
                 message: format!("Version not found: {}/{}", contract_name, version),
             })
@@ -222,12 +217,12 @@ impl UpgradeManager {
 
     /// Get the active version of a contract
     pub fn get_active_version(&self, contract_name: &str) -> SlvrResult<ContractVersion> {
-        let version_str = self
-            .active_versions
-            .get(contract_name)
-            .ok_or_else(|| SlvrError::RuntimeError {
-                message: format!("No active version for contract: {}", contract_name),
-            })?;
+        let version_str =
+            self.active_versions
+                .get(contract_name)
+                .ok_or_else(|| SlvrError::RuntimeError {
+                    message: format!("No active version for contract: {}", contract_name),
+                })?;
 
         self.get_version(contract_name, version_str)
     }

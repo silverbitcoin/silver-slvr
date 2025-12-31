@@ -5,12 +5,12 @@
 //! in a real blockchain system. Full production-ready implementation.
 
 use crate::error::{SlvrError, SlvrResult};
+use chrono::{DateTime, Utc};
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha512};
 use std::collections::HashMap;
 use std::sync::Arc;
-use parking_lot::RwLock;
-use chrono::{DateTime, Utc};
-use sha2::{Sha512, Digest};
 
 /// Account information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -611,11 +611,7 @@ impl AccountManager {
 
     /// Get total balance of all accounts
     pub fn get_total_balance(&self) -> u64 {
-        self.accounts
-            .read()
-            .values()
-            .map(|acc| acc.balance)
-            .sum()
+        self.accounts.read().values().map(|acc| acc.balance).sum()
     }
 
     /// Get average account balance

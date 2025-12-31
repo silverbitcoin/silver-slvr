@@ -4,9 +4,9 @@
 //! including atomicity, consistency, isolation, and durability.
 
 use crate::error::{SlvrError, SlvrResult};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use chrono::{DateTime, Utc};
 
 /// Transaction status
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -166,7 +166,7 @@ impl Transaction {
     pub fn fail(&mut self, reason: String) -> SlvrResult<()> {
         self.status = TransactionStatus::Failed;
         self.end_time = Some(Utc::now());
-        
+
         let log_entry = LogEntry {
             operation: Operation::Write {
                 table: "system".to_string(),
@@ -190,7 +190,9 @@ impl Transaction {
     pub fn is_complete(&self) -> bool {
         matches!(
             self.status,
-            TransactionStatus::Committed | TransactionStatus::RolledBack | TransactionStatus::Failed
+            TransactionStatus::Committed
+                | TransactionStatus::RolledBack
+                | TransactionStatus::Failed
         )
     }
 }
@@ -348,7 +350,7 @@ mod tests {
     #[test]
     fn test_transaction_lifecycle() {
         let mut tx = Transaction::new(IsolationLevel::ReadCommitted);
-        
+
         assert!(tx.begin().is_ok());
         assert_eq!(tx.status, TransactionStatus::Running);
 
@@ -366,7 +368,7 @@ mod tests {
     #[test]
     fn test_transaction_rollback() {
         let mut tx = Transaction::new(IsolationLevel::ReadCommitted);
-        
+
         assert!(tx.begin().is_ok());
 
         let op = Operation::Write {

@@ -177,13 +177,10 @@ impl Value {
     /// Get an element from a list by index
     pub fn get_list_element(&self, index: usize) -> SlvrResult<Value> {
         match self {
-            Value::List(l) => l
-                .get(index)
-                .cloned()
-                .ok_or(SlvrError::IndexOutOfBounds {
-                    index: index as i64,
-                    length: l.len(),
-                }),
+            Value::List(l) => l.get(index).cloned().ok_or(SlvrError::IndexOutOfBounds {
+                index: index as i64,
+                length: l.len(),
+            }),
             _ => Err(SlvrError::invalid_arg(format!(
                 "Cannot index {}",
                 self.type_name()
@@ -194,12 +191,9 @@ impl Value {
     /// Get a field from an object
     pub fn get_field(&self, key: &str) -> SlvrResult<Value> {
         match self {
-            Value::Object(o) => o
-                .get(key)
-                .cloned()
-                .ok_or_else(|| SlvrError::KeyNotFound {
-                    key: key.to_string(),
-                }),
+            Value::Object(o) => o.get(key).cloned().ok_or_else(|| SlvrError::KeyNotFound {
+                key: key.to_string(),
+            }),
             _ => Err(SlvrError::invalid_arg(format!(
                 "Cannot access field on {}",
                 self.type_name()
@@ -245,9 +239,15 @@ mod tests {
     #[test]
     fn test_value_conversions() {
         assert_eq!(Value::Integer(42).to_integer().unwrap(), 42);
-        assert_eq!(Value::Decimal(3.14).to_decimal().unwrap(), 3.14);
+        let test_decimal = 2.71_f64; // Use e instead of pi
         assert_eq!(
-            Value::String("hello".to_string()).to_string_value().unwrap(),
+            Value::Decimal(test_decimal).to_decimal().unwrap(),
+            test_decimal
+        );
+        assert_eq!(
+            Value::String("hello".to_string())
+                .to_string_value()
+                .unwrap(),
             "hello"
         );
     }
@@ -256,7 +256,10 @@ mod tests {
     fn test_value_equality() {
         assert_eq!(Value::Integer(42), Value::Integer(42));
         assert_ne!(Value::Integer(42), Value::Integer(43));
-        assert_eq!(Value::String("hello".to_string()), Value::String("hello".to_string()));
+        assert_eq!(
+            Value::String("hello".to_string()),
+            Value::String("hello".to_string())
+        );
     }
 
     #[test]

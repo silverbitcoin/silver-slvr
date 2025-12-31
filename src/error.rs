@@ -83,6 +83,10 @@ pub enum SlvrError {
     /// Internal error
     #[error("Internal error: {message}")]
     InternalError { message: String },
+
+    /// Lock error (mutex poisoning)
+    #[error("Lock error: {0}")]
+    LockError(String),
 }
 
 impl SlvrError {
@@ -120,16 +124,12 @@ impl SlvrError {
 
     /// Create an undefined variable error
     pub fn undefined_var(name: impl Into<String>) -> Self {
-        SlvrError::UndefinedVariable {
-            name: name.into(),
-        }
+        SlvrError::UndefinedVariable { name: name.into() }
     }
 
     /// Create an undefined function error
     pub fn undefined_func(name: impl Into<String>) -> Self {
-        SlvrError::UndefinedFunction {
-            name: name.into(),
-        }
+        SlvrError::UndefinedFunction { name: name.into() }
     }
 
     /// Create a type mismatch error

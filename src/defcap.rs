@@ -5,9 +5,9 @@
 
 use crate::error::{SlvrError, SlvrResult};
 use crate::value::Value;
+use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use chrono::{DateTime, Duration, Utc};
 use uuid::Uuid;
 
 /// Represents a capability definition
@@ -230,9 +230,10 @@ impl CapabilityManager {
                 grant_ids
                     .iter()
                     .filter_map(|grant_id| {
-                        self.grants.get(grant_id).cloned().filter(|g| {
-                            g.active && g.expires_at.is_none_or(|exp| exp > Utc::now())
-                        })
+                        self.grants
+                            .get(grant_id)
+                            .cloned()
+                            .filter(|g| g.active && g.expires_at.is_none_or(|exp| exp > Utc::now()))
                     })
                     .collect()
             })
@@ -247,9 +248,10 @@ impl CapabilityManager {
                 grant_ids
                     .iter()
                     .filter_map(|grant_id| {
-                        self.grants.get(grant_id).cloned().filter(|g| {
-                            g.active && g.expires_at.is_none_or(|exp| exp > Utc::now())
-                        })
+                        self.grants
+                            .get(grant_id)
+                            .cloned()
+                            .filter(|g| g.active && g.expires_at.is_none_or(|exp| exp > Utc::now()))
                     })
                     .collect()
             })
@@ -288,9 +290,7 @@ impl CapabilityManager {
         let expired: Vec<String> = self
             .grants
             .iter()
-            .filter(|(_, grant)| {
-                grant.expires_at.is_some_and(|exp| exp <= now)
-            })
+            .filter(|(_, grant)| grant.expires_at.is_some_and(|exp| exp <= now))
             .map(|(id, _)| id.clone())
             .collect();
 
@@ -339,69 +339,66 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_capability_definition() {
+    fn test_capability_definition() -> Result<(), Box<dyn std::error::Error>> {
         let mut manager = CapabilityManager::new();
-        let cap_id = manager
-            .define_capability(
-                "transfer".to_string(),
-                "token".to_string(),
-                vec![("amount".to_string(), "integer".to_string())],
-                Some("Transfer capability".to_string()),
-                true,
-            )
-            .unwrap();
+        let cap_id = manager.define_capability(
+            "transfer".to_string(),
+            "token".to_string(),
+            vec![("amount".to_string(), "integer".to_string())],
+            Some("Transfer capability".to_string()),
+            true,
+        )?;
 
-        let cap = manager.get_capability_def(&cap_id).unwrap();
+        let cap = manager
+            .get_capability_def(&cap_id)
+            .map_err(|_| Box::<dyn std::error::Error>::from("Capability not found"))?;
         assert_eq!(cap.name, "transfer");
         assert!(cap.managed);
+        Ok(())
     }
 
     #[test]
-    fn test_grant_capability() {
+    fn test_grant_capability() -> Result<(), Box<dyn std::error::Error>> {
         let mut manager = CapabilityManager::new();
-        let cap_id = manager
-            .define_capability(
-                "transfer".to_string(),
-                "token".to_string(),
-                vec![],
-                None,
-                true,
-            )
-            .unwrap();
+        let cap_id = manager.define_capability(
+            "transfer".to_string(),
+            "token".to_string(),
+            vec![],
+            None,
+            true,
+        )?;
 
-        let _grant_id = manager
-            .grant_capability(cap_id.clone(), "alice".to_string(), HashMap::new(), None)
-            .unwrap();
+        let _grant_id =
+            manager.grant_capability(cap_id.clone(), "alice".to_string(), HashMap::new(), None)?;
 
         assert!(manager.has_capability("alice", &cap_id));
         assert!(!manager.has_capability("bob", &cap_id));
+        Ok(())
     }
 
     #[test]
-    fn test_revoke_capability() {
+    fn test_revoke_capability() -> Result<(), Box<dyn std::error::Error>> {
         let mut manager = CapabilityManager::new();
-        let cap_id = manager
-            .define_capability(
-                "transfer".to_string(),
-                "token".to_string(),
-                vec![],
-                None,
-                true,
-            )
-            .unwrap();
+        let cap_id = manager.define_capability(
+            "transfer".to_string(),
+            "token".to_string(),
+            vec![],
+            None,
+            true,
+        )?;
 
-        let grant_id = manager
-            .grant_capability(cap_id.clone(), "alice".to_string(), HashMap::new(), None)
-            .unwrap();
+        let grant_id =
+            manager.grant_capability(cap_id.clone(), "alice".to_string(), HashMap::new(), None)?;
 
         assert!(manager.has_capability("alice", &cap_id));
 
-        manager.revoke_capability(&grant_id).unwrap();
+        manager.revoke_capability(&grant_id)?;
         assert!(!manager.has_capability("alice", &cap_id));
+        Ok(())
     }
 
     #[test]
-    fn test_capability_expiry() {
+    fn test_capability_expiry() -> Result<(), Box<dyn std::error::Error>> {
         let mut manager = CapabilityManager::new();
         let cap_id = manager
             .define_capability(
@@ -423,29 +420,18 @@ mod tests {
             .unwrap();
 
         assert!(!manager.has_capability("alice", &cap_id));
+        Ok(())
     }
 
     #[test]
     fn test_get_principal_capabilities() {
         let mut manager = CapabilityManager::new();
         let cap1 = manager
-            .define_capability(
-                "read".to_string(),
-                "token".to_string(),
-                vec![],
-                None,
-                true,
-            )
+            .define_capability("read".to_string(), "token".to_string(), vec![], None, true)
             .unwrap();
 
         let cap2 = manager
-            .define_capability(
-                "write".to_string(),
-                "token".to_string(),
-                vec![],
-                None,
-                true,
-            )
+            .define_capability("write".to_string(), "token".to_string(), vec![], None, true)
             .unwrap();
 
         manager

@@ -1,12 +1,12 @@
 //! Standard Library - 100+ Built-in Functions for Slvr
-//! 
+//!
 //! This module provides comprehensive built-in functions for string manipulation,
 //! mathematical operations, cryptographic functions, list operations, and more.
 
-use crate::value::Value;
 use crate::error::{SlvrError, SlvrResult};
+use crate::value::Value;
+use sha2::{Digest, Sha512};
 use std::collections::HashMap;
-use sha2::{Sha512, Digest};
 
 /// String manipulation functions
 pub mod string {
@@ -20,9 +20,11 @@ pub mod string {
                 Value::Integer(i) => result.push_str(&i.to_string()),
                 Value::Decimal(d) => result.push_str(&d.to_string()),
                 Value::Boolean(b) => result.push_str(if b { "true" } else { "false" }),
-                _ => return Err(SlvrError::TypeError {
-                    message: "concat requires string-convertible values".to_string(),
-                }),
+                _ => {
+                    return Err(SlvrError::TypeError {
+                        message: "concat requires string-convertible values".to_string(),
+                    })
+                }
             }
         }
         Ok(Value::String(result))
@@ -40,23 +42,29 @@ pub mod string {
     pub fn substring(s: Value, start: Value, end: Value) -> SlvrResult<Value> {
         let string = match s {
             Value::String(s) => s,
-            _ => return Err(SlvrError::TypeError {
-                message: "substring requires a string".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "substring requires a string".to_string(),
+                })
+            }
         };
 
         let start_idx = match start {
             Value::Integer(i) => i as usize,
-            _ => return Err(SlvrError::TypeError {
-                message: "substring start must be an integer".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "substring start must be an integer".to_string(),
+                })
+            }
         };
 
         let end_idx = match end {
             Value::Integer(i) => i as usize,
-            _ => return Err(SlvrError::TypeError {
-                message: "substring end must be an integer".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "substring end must be an integer".to_string(),
+                })
+            }
         };
 
         if start_idx > string.len() || end_idx > string.len() || start_idx > end_idx {
@@ -99,16 +107,20 @@ pub mod string {
     pub fn split(s: Value, delimiter: Value) -> SlvrResult<Value> {
         let string = match s {
             Value::String(s) => s,
-            _ => return Err(SlvrError::TypeError {
-                message: "split requires a string".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "split requires a string".to_string(),
+                })
+            }
         };
 
         let delim = match delimiter {
             Value::String(d) => d,
-            _ => return Err(SlvrError::TypeError {
-                message: "split delimiter must be a string".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "split delimiter must be a string".to_string(),
+                })
+            }
         };
 
         let parts: Vec<Value> = string
@@ -122,16 +134,20 @@ pub mod string {
     pub fn contains(s: Value, substring: Value) -> SlvrResult<Value> {
         let string = match s {
             Value::String(s) => s,
-            _ => return Err(SlvrError::TypeError {
-                message: "contains requires a string".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "contains requires a string".to_string(),
+                })
+            }
         };
 
         let substr = match substring {
             Value::String(s) => s,
-            _ => return Err(SlvrError::TypeError {
-                message: "contains substring must be a string".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "contains substring must be a string".to_string(),
+                })
+            }
         };
 
         Ok(Value::Boolean(string.contains(&substr)))
@@ -140,9 +156,11 @@ pub mod string {
     pub fn format(template: Value, args: Vec<Value>) -> SlvrResult<Value> {
         let template_str = match template {
             Value::String(s) => s,
-            _ => return Err(SlvrError::TypeError {
-                message: "format requires a string template".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "format requires a string template".to_string(),
+                })
+            }
         };
 
         let mut result = template_str.clone();
@@ -180,12 +198,8 @@ pub mod math {
         match (a, b) {
             (Value::Integer(x), Value::Integer(y)) => Ok(Value::Integer(x.min(y))),
             (Value::Decimal(x), Value::Decimal(y)) => Ok(Value::Decimal(x.min(y))),
-            (Value::Integer(x), Value::Decimal(y)) => {
-                Ok(Value::Decimal((x as f64).min(y)))
-            }
-            (Value::Decimal(x), Value::Integer(y)) => {
-                Ok(Value::Decimal(x.min(y as f64)))
-            }
+            (Value::Integer(x), Value::Decimal(y)) => Ok(Value::Decimal((x as f64).min(y))),
+            (Value::Decimal(x), Value::Integer(y)) => Ok(Value::Decimal(x.min(y as f64))),
             _ => Err(SlvrError::TypeError {
                 message: "min requires numbers".to_string(),
             }),
@@ -196,12 +210,8 @@ pub mod math {
         match (a, b) {
             (Value::Integer(x), Value::Integer(y)) => Ok(Value::Integer(x.max(y))),
             (Value::Decimal(x), Value::Decimal(y)) => Ok(Value::Decimal(x.max(y))),
-            (Value::Integer(x), Value::Decimal(y)) => {
-                Ok(Value::Decimal((x as f64).max(y)))
-            }
-            (Value::Decimal(x), Value::Integer(y)) => {
-                Ok(Value::Decimal(x.max(y as f64)))
-            }
+            (Value::Integer(x), Value::Decimal(y)) => Ok(Value::Decimal((x as f64).max(y))),
+            (Value::Decimal(x), Value::Integer(y)) => Ok(Value::Decimal(x.max(y as f64))),
             _ => Err(SlvrError::TypeError {
                 message: "max requires numbers".to_string(),
             }),
@@ -289,15 +299,9 @@ pub mod math {
                     Ok(Value::Integer(b.pow(e as u32)))
                 }
             }
-            (Value::Decimal(b), Value::Integer(e)) => {
-                Ok(Value::Decimal(b.powf(e as f64)))
-            }
-            (Value::Integer(b), Value::Decimal(e)) => {
-                Ok(Value::Decimal((b as f64).powf(e)))
-            }
-            (Value::Decimal(b), Value::Decimal(e)) => {
-                Ok(Value::Decimal(b.powf(e)))
-            }
+            (Value::Decimal(b), Value::Integer(e)) => Ok(Value::Decimal(b.powf(e as f64))),
+            (Value::Integer(b), Value::Decimal(e)) => Ok(Value::Decimal((b as f64).powf(e))),
+            (Value::Decimal(b), Value::Decimal(e)) => Ok(Value::Decimal(b.powf(e))),
             _ => Err(SlvrError::TypeError {
                 message: "pow requires numbers".to_string(),
             }),
@@ -343,24 +347,24 @@ pub mod crypto {
         let bytes = match data {
             Value::String(s) => s.into_bytes(),
             Value::Integer(i) => i.to_string().into_bytes(),
-            _ => return Err(SlvrError::TypeError {
-                message: "sha512 requires a string or integer".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "sha512 requires a string or integer".to_string(),
+                })
+            }
         };
 
         let mut hasher = Sha512::new();
         hasher.update(&bytes);
         let result = hasher.finalize();
-        
+
         Ok(Value::String(hex::encode(result)))
     }
 
     pub fn verify_sha512(data: Value, hash: Value) -> SlvrResult<Value> {
         let computed = sha512_hash(data)?;
         match (computed, hash) {
-            (Value::String(c), Value::String(h)) => {
-                Ok(Value::Boolean(c == h))
-            }
+            (Value::String(c), Value::String(h)) => Ok(Value::Boolean(c == h)),
             _ => Err(SlvrError::TypeError {
                 message: "verify-sha512 requires strings".to_string(),
             }),
@@ -371,15 +375,17 @@ pub mod crypto {
         let bytes = match data {
             Value::String(s) => s.into_bytes(),
             Value::Integer(i) => i.to_string().into_bytes(),
-            _ => return Err(SlvrError::TypeError {
-                message: "sha512 requires a string or integer".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "sha512 requires a string or integer".to_string(),
+                })
+            }
         };
 
         let mut hasher = Sha512::new();
         hasher.update(&bytes);
         let result = hasher.finalize();
-        
+
         Ok(Value::String(hex::encode(result)))
     }
 
@@ -389,21 +395,25 @@ pub mod crypto {
 
         let key_bytes = match key {
             Value::String(s) => s.into_bytes(),
-            _ => return Err(SlvrError::TypeError {
-                message: "hmac-sha512 key must be a string".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "hmac-sha512 key must be a string".to_string(),
+                })
+            }
         };
 
         let data_bytes = match data {
             Value::String(s) => s.into_bytes(),
             Value::Integer(i) => i.to_string().into_bytes(),
-            _ => return Err(SlvrError::TypeError {
-                message: "hmac-sha512 data must be a string or integer".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "hmac-sha512 data must be a string or integer".to_string(),
+                })
+            }
         };
 
-        let mut mac = HmacSha512::new_from_slice(&key_bytes)
-            .map_err(|_| SlvrError::RuntimeError {
+        let mut mac =
+            HmacSha512::new_from_slice(&key_bytes).map_err(|_| SlvrError::RuntimeError {
                 message: "invalid HMAC key".to_string(),
             })?;
         mac.update(&data_bytes);
@@ -429,16 +439,20 @@ pub mod list {
     pub fn at(list: Value, index: Value) -> SlvrResult<Value> {
         let lst = match list {
             Value::List(l) => l,
-            _ => return Err(SlvrError::TypeError {
-                message: "at requires a list".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "at requires a list".to_string(),
+                })
+            }
         };
 
         let idx = match index {
             Value::Integer(i) => i as usize,
-            _ => return Err(SlvrError::TypeError {
-                message: "at index must be an integer".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "at index must be an integer".to_string(),
+                })
+            }
         };
 
         if idx >= lst.len() {
@@ -466,15 +480,13 @@ pub mod list {
     pub fn sort(list: Value) -> SlvrResult<Value> {
         match list {
             Value::List(mut l) => {
-                l.sort_by(|a, b| {
-                    match (a, b) {
-                        (Value::Integer(x), Value::Integer(y)) => x.cmp(y),
-                        (Value::Decimal(x), Value::Decimal(y)) => {
-                            x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal)
-                        }
-                        (Value::String(x), Value::String(y)) => x.cmp(y),
-                        _ => std::cmp::Ordering::Equal,
+                l.sort_by(|a, b| match (a, b) {
+                    (Value::Integer(x), Value::Integer(y)) => x.cmp(y),
+                    (Value::Decimal(x), Value::Decimal(y)) => {
+                        x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal)
                     }
+                    (Value::String(x), Value::String(y)) => x.cmp(y),
+                    _ => std::cmp::Ordering::Equal,
                 });
                 Ok(Value::List(l))
             }
@@ -545,23 +557,29 @@ pub mod list {
     pub fn sublist(list: Value, start: Value, end: Value) -> SlvrResult<Value> {
         let lst = match list {
             Value::List(l) => l,
-            _ => return Err(SlvrError::TypeError {
-                message: "sublist requires a list".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "sublist requires a list".to_string(),
+                })
+            }
         };
 
         let start_idx = match start {
             Value::Integer(i) => i as usize,
-            _ => return Err(SlvrError::TypeError {
-                message: "sublist start must be an integer".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "sublist start must be an integer".to_string(),
+                })
+            }
         };
 
         let end_idx = match end {
             Value::Integer(i) => i as usize,
-            _ => return Err(SlvrError::TypeError {
-                message: "sublist end must be an integer".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "sublist end must be an integer".to_string(),
+                })
+            }
         };
 
         if start_idx > lst.len() || end_idx > lst.len() || start_idx > end_idx {
@@ -582,10 +600,7 @@ pub mod object {
     pub fn keys(obj: Value) -> SlvrResult<Value> {
         match obj {
             Value::Object(map) => {
-                let keys: Vec<Value> = map
-                    .keys()
-                    .map(|k| Value::String(k.clone()))
-                    .collect();
+                let keys: Vec<Value> = map.keys().map(|k| Value::String(k.clone())).collect();
                 Ok(Value::List(keys))
             }
             _ => Err(SlvrError::TypeError {
@@ -609,16 +624,20 @@ pub mod object {
     pub fn merge(obj1: Value, obj2: Value) -> SlvrResult<Value> {
         let mut map1 = match obj1 {
             Value::Object(m) => m,
-            _ => return Err(SlvrError::TypeError {
-                message: "merge requires objects".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "merge requires objects".to_string(),
+                })
+            }
         };
 
         let map2 = match obj2 {
             Value::Object(m) => m,
-            _ => return Err(SlvrError::TypeError {
-                message: "merge requires objects".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "merge requires objects".to_string(),
+                })
+            }
         };
 
         for (k, v) in map2 {
@@ -631,16 +650,20 @@ pub mod object {
     pub fn select(obj: Value, fields: Value) -> SlvrResult<Value> {
         let map = match obj {
             Value::Object(m) => m,
-            _ => return Err(SlvrError::TypeError {
-                message: "select requires an object".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "select requires an object".to_string(),
+                })
+            }
         };
 
         let field_list = match fields {
             Value::List(l) => l,
-            _ => return Err(SlvrError::TypeError {
-                message: "select fields must be a list".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "select fields must be a list".to_string(),
+                })
+            }
         };
 
         let mut result = HashMap::new();
@@ -658,16 +681,20 @@ pub mod object {
     pub fn has_key(obj: Value, key: Value) -> SlvrResult<Value> {
         let map = match obj {
             Value::Object(m) => m,
-            _ => return Err(SlvrError::TypeError {
-                message: "has-key requires an object".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "has-key requires an object".to_string(),
+                })
+            }
         };
 
         let k = match key {
             Value::String(s) => s,
-            _ => return Err(SlvrError::TypeError {
-                message: "has-key key must be a string".to_string(),
-            }),
+            _ => {
+                return Err(SlvrError::TypeError {
+                    message: "has-key key must be a string".to_string(),
+                })
+            }
         };
 
         Ok(Value::Boolean(map.contains_key(&k)))
@@ -682,14 +709,12 @@ pub mod conversion {
         match val {
             Value::Integer(i) => Ok(Value::Integer(i)),
             Value::Decimal(d) => Ok(Value::Integer(d as i128)),
-            Value::String(s) => {
-                match s.parse::<i128>() {
-                    Ok(i) => Ok(Value::Integer(i)),
-                    Err(_) => Err(SlvrError::TypeError {
-                        message: format!("cannot convert '{}' to integer", s),
-                    }),
-                }
-            }
+            Value::String(s) => match s.parse::<i128>() {
+                Ok(i) => Ok(Value::Integer(i)),
+                Err(_) => Err(SlvrError::TypeError {
+                    message: format!("cannot convert '{}' to integer", s),
+                }),
+            },
             Value::Boolean(b) => Ok(Value::Integer(if b { 1 } else { 0 })),
             _ => Err(SlvrError::TypeError {
                 message: "cannot convert to integer".to_string(),
@@ -701,14 +726,12 @@ pub mod conversion {
         match val {
             Value::Integer(i) => Ok(Value::Decimal(i as f64)),
             Value::Decimal(d) => Ok(Value::Decimal(d)),
-            Value::String(s) => {
-                match s.parse::<f64>() {
-                    Ok(d) => Ok(Value::Decimal(d)),
-                    Err(_) => Err(SlvrError::TypeError {
-                        message: format!("cannot convert '{}' to decimal", s),
-                    }),
-                }
-            }
+            Value::String(s) => match s.parse::<f64>() {
+                Ok(d) => Ok(Value::Decimal(d)),
+                Err(_) => Err(SlvrError::TypeError {
+                    message: format!("cannot convert '{}' to decimal", s),
+                }),
+            },
             _ => Err(SlvrError::TypeError {
                 message: "cannot convert to decimal".to_string(),
             }),

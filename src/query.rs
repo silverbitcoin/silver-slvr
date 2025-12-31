@@ -3,8 +3,8 @@
 //! This module provides advanced database query capabilities including
 //! indexing, complex filtering, and pagination support.
 
-use crate::value::Value;
 use crate::error::{SlvrError, SlvrResult};
+use crate::value::Value;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -28,12 +28,8 @@ impl FilterCondition {
     /// Evaluate filter condition against a value
     pub fn evaluate(&self, record: &HashMap<String, Value>) -> bool {
         match self {
-            FilterCondition::Equals(field, value) => {
-                record.get(field) == Some(value)
-            }
-            FilterCondition::NotEquals(field, value) => {
-                record.get(field) != Some(value)
-            }
+            FilterCondition::Equals(field, value) => record.get(field) == Some(value),
+            FilterCondition::NotEquals(field, value) => record.get(field) != Some(value),
             FilterCondition::GreaterThan(field, value) => {
                 if let Some(v) = record.get(field) {
                     Self::compare_values(v, value) > 0
@@ -76,12 +72,8 @@ impl FilterCondition {
                     false
                 }
             }
-            FilterCondition::And(left, right) => {
-                left.evaluate(record) && right.evaluate(record)
-            }
-            FilterCondition::Or(left, right) => {
-                left.evaluate(record) || right.evaluate(record)
-            }
+            FilterCondition::And(left, right) => left.evaluate(record) && right.evaluate(record),
+            FilterCondition::Or(left, right) => left.evaluate(record) || right.evaluate(record),
             FilterCondition::Not(condition) => !condition.evaluate(record),
         }
     }
@@ -180,7 +172,10 @@ impl Query {
     }
 
     /// Execute query on records
-    pub fn execute(&self, records: Vec<HashMap<String, Value>>) -> SlvrResult<Vec<HashMap<String, Value>>> {
+    pub fn execute(
+        &self,
+        records: Vec<HashMap<String, Value>>,
+    ) -> SlvrResult<Vec<HashMap<String, Value>>> {
         let mut result = records;
 
         // Apply filters
@@ -248,10 +243,7 @@ impl Index {
 
     /// Add entry to index
     pub fn add(&mut self, key: String, record_id: String) {
-        self.entries
-            .entry(key)
-            .or_default()
-            .push(record_id);
+        self.entries.entry(key).or_default().push(record_id);
     }
 
     /// Remove entry from index
@@ -266,9 +258,7 @@ impl Index {
 
     /// Lookup records by key
     pub fn lookup(&self, key: &str) -> Vec<String> {
-        self.entries
-            .get(key).cloned()
-            .unwrap_or_default()
+        self.entries.get(key).cloned().unwrap_or_default()
     }
 
     /// Get all keys
@@ -383,10 +373,8 @@ mod tests {
         let mut record = HashMap::new();
         record.insert("name".to_string(), Value::String("Alice".to_string()));
 
-        let filter = FilterCondition::Equals(
-            "name".to_string(),
-            Value::String("Alice".to_string()),
-        );
+        let filter =
+            FilterCondition::Equals("name".to_string(), Value::String("Alice".to_string()));
 
         assert!(filter.evaluate(&record));
     }
@@ -396,10 +384,7 @@ mod tests {
         let mut record = HashMap::new();
         record.insert("age".to_string(), Value::Integer(30));
 
-        let filter = FilterCondition::GreaterThan(
-            "age".to_string(),
-            Value::Integer(25),
-        );
+        let filter = FilterCondition::GreaterThan("age".to_string(), Value::Integer(25));
 
         assert!(filter.evaluate(&record));
     }

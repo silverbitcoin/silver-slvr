@@ -48,11 +48,13 @@ impl VirtualMachine {
             self.execute_instruction(&instruction)?;
             self.ip += 1;
         }
-        
+
         if self.stack.is_empty() {
             Ok(Value::Unit)
         } else {
-            self.stack.pop().ok_or_else(|| SlvrError::runtime("Stack pop failed unexpectedly"))
+            self.stack
+                .pop()
+                .ok_or_else(|| SlvrError::runtime("Stack pop failed unexpectedly"))
         }
     }
 
@@ -85,7 +87,9 @@ impl VirtualMachine {
                 if self.stack.is_empty() {
                     return Err(SlvrError::runtime("Stack underflow"));
                 }
-                let val = self.stack.last()
+                let val = self
+                    .stack
+                    .last()
                     .ok_or_else(|| SlvrError::runtime("Stack access failed"))?
                     .clone();
                 self.stack.push(val);
@@ -151,34 +155,40 @@ impl VirtualMachine {
             Instruction::Less => {
                 let b = self.pop_stack()?;
                 let a = self.pop_stack()?;
-                self.stack.push(Value::Boolean(Self::compare_values(&a, &b)? < 0));
+                self.stack
+                    .push(Value::Boolean(Self::compare_values(&a, &b)? < 0));
             }
             Instruction::LessEqual => {
                 let b = self.pop_stack()?;
                 let a = self.pop_stack()?;
-                self.stack.push(Value::Boolean(Self::compare_values(&a, &b)? <= 0));
+                self.stack
+                    .push(Value::Boolean(Self::compare_values(&a, &b)? <= 0));
             }
             Instruction::Greater => {
                 let b = self.pop_stack()?;
                 let a = self.pop_stack()?;
-                self.stack.push(Value::Boolean(Self::compare_values(&a, &b)? > 0));
+                self.stack
+                    .push(Value::Boolean(Self::compare_values(&a, &b)? > 0));
             }
             Instruction::GreaterEqual => {
                 let b = self.pop_stack()?;
                 let a = self.pop_stack()?;
-                self.stack.push(Value::Boolean(Self::compare_values(&a, &b)? >= 0));
+                self.stack
+                    .push(Value::Boolean(Self::compare_values(&a, &b)? >= 0));
             }
 
             // Logical operations
             Instruction::And => {
                 let b = self.pop_stack()?;
                 let a = self.pop_stack()?;
-                self.stack.push(Value::Boolean(a.is_truthy() && b.is_truthy()));
+                self.stack
+                    .push(Value::Boolean(a.is_truthy() && b.is_truthy()));
             }
             Instruction::Or => {
                 let b = self.pop_stack()?;
                 let a = self.pop_stack()?;
-                self.stack.push(Value::Boolean(a.is_truthy() || b.is_truthy()));
+                self.stack
+                    .push(Value::Boolean(a.is_truthy() || b.is_truthy()));
             }
             Instruction::Not => {
                 let val = self.pop_stack()?;
@@ -191,7 +201,8 @@ impl VirtualMachine {
                 let a = self.pop_stack()?;
                 let a_str = a.to_string_value()?;
                 let b_str = b.to_string_value()?;
-                self.stack.push(Value::String(format!("{}{}", a_str, b_str)));
+                self.stack
+                    .push(Value::String(format!("{}{}", a_str, b_str)));
             }
 
             // Control flow
@@ -220,7 +231,10 @@ impl VirtualMachine {
                     if let Some(val) = locals.get(*idx) {
                         self.stack.push(val.clone());
                     } else {
-                        return Err(SlvrError::runtime(format!("Local variable {} not found", idx)));
+                        return Err(SlvrError::runtime(format!(
+                            "Local variable {} not found",
+                            idx
+                        )));
                     }
                 }
             }
@@ -358,7 +372,9 @@ impl VirtualMachine {
     }
 
     fn pop_stack(&mut self) -> SlvrResult<Value> {
-        self.stack.pop().ok_or_else(|| SlvrError::runtime("Stack underflow"))
+        self.stack
+            .pop()
+            .ok_or_else(|| SlvrError::runtime("Stack underflow"))
     }
 
     fn add_values(a: Value, b: Value) -> SlvrResult<Value> {
@@ -456,17 +472,47 @@ impl VirtualMachine {
 
     fn compare_values(a: &Value, b: &Value) -> SlvrResult<i32> {
         match (a, b) {
-            (Value::Integer(x), Value::Integer(y)) => Ok(if x < y { -1 } else if x > y { 1 } else { 0 }),
-            (Value::Decimal(x), Value::Decimal(y)) => Ok(if x < y { -1 } else if x > y { 1 } else { 0 }),
+            (Value::Integer(x), Value::Integer(y)) => Ok(if x < y {
+                -1
+            } else if x > y {
+                1
+            } else {
+                0
+            }),
+            (Value::Decimal(x), Value::Decimal(y)) => Ok(if x < y {
+                -1
+            } else if x > y {
+                1
+            } else {
+                0
+            }),
             (Value::Integer(x), Value::Decimal(y)) => {
                 let x_f = *x as f64;
-                Ok(if x_f < *y { -1 } else if x_f > *y { 1 } else { 0 })
+                Ok(if x_f < *y {
+                    -1
+                } else if x_f > *y {
+                    1
+                } else {
+                    0
+                })
             }
             (Value::Decimal(x), Value::Integer(y)) => {
                 let y_f = *y as f64;
-                Ok(if x < &y_f { -1 } else if x > &y_f { 1 } else { 0 })
+                Ok(if x < &y_f {
+                    -1
+                } else if x > &y_f {
+                    1
+                } else {
+                    0
+                })
             }
-            (Value::String(x), Value::String(y)) => Ok(if x < y { -1 } else if x > y { 1 } else { 0 }),
+            (Value::String(x), Value::String(y)) => Ok(if x < y {
+                -1
+            } else if x > y {
+                1
+            } else {
+                0
+            }),
             _ => Err(SlvrError::type_mismatch("comparable", "non-comparable")),
         }
     }
@@ -490,7 +536,7 @@ mod tests {
         bytecode.push(Instruction::PushInt(42));
         bytecode.push(Instruction::PushInt(8));
         bytecode.push(Instruction::Add);
-        
+
         let runtime = Runtime::new(1_000_000);
         let mut vm = VirtualMachine::new(bytecode, runtime);
         let result = vm.execute().unwrap();

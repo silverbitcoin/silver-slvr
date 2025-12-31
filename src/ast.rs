@@ -41,11 +41,7 @@ pub enum Definition {
         doc: Option<String>,
     },
     /// Constant definition
-    Constant {
-        name: String,
-        ty: Type,
-        value: Expr,
-    },
+    Constant { name: String, ty: Type, value: Expr },
 }
 
 /// Type annotations
@@ -103,10 +99,7 @@ pub enum Expr {
         right: Box<Expr>,
     },
     /// Unary operation
-    UnaryOp {
-        op: UnaryOp,
-        operand: Box<Expr>,
-    },
+    UnaryOp { op: UnaryOp, operand: Box<Expr> },
     /// If expression
     If {
         condition: Box<Expr>,
@@ -124,22 +117,13 @@ pub enum Expr {
     /// Object literal
     Object(Vec<(String, Expr)>),
     /// Field access
-    FieldAccess {
-        object: Box<Expr>,
-        field: String,
-    },
+    FieldAccess { object: Box<Expr>, field: String },
     /// Index access
-    Index {
-        object: Box<Expr>,
-        index: Box<Expr>,
-    },
+    Index { object: Box<Expr>, index: Box<Expr> },
     /// Block expression
     Block(Vec<Expr>),
     /// Database read
-    Read {
-        table: String,
-        key: Box<Expr>,
-    },
+    Read { table: String, key: Box<Expr> },
     /// Database write
     Write {
         table: String,
@@ -153,10 +137,7 @@ pub enum Expr {
         updates: Vec<(String, Expr)>,
     },
     /// Database delete
-    Delete {
-        table: String,
-        key: Box<Expr>,
-    },
+    Delete { table: String, key: Box<Expr> },
 }
 
 /// Literal values

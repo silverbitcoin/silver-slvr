@@ -207,7 +207,12 @@ impl ModuleRegistry {
                 .cloned()
                 .collect()
         } else {
-            module.exports.iter().filter(|e| e.public).cloned().collect()
+            module
+                .exports
+                .iter()
+                .filter(|e| e.public)
+                .cloned()
+                .collect()
         };
 
         // Cache result
@@ -381,28 +386,25 @@ mod tests {
     #[test]
     fn test_register_module() {
         let mut registry = ModuleRegistry::new();
-        let _module_id = registry
-            .register_module(
-                "token".to_string(),
-                "contracts".to_string(),
-                "1.0.0".to_string(),
-                "code".to_string(),
-                vec![ExportedSymbol {
-                    name: "transfer".to_string(),
-                    symbol_type: SymbolType::Function,
-                    public: true,
-                    doc: None,
-                }],
-                vec![],
-            );
+        let result = registry.register_module(
+            "token".to_string(),
+            "contracts".to_string(),
+            "1.0.0".to_string(),
+            "code".to_string(),
+            vec![ExportedSymbol {
+                name: "transfer".to_string(),
+                symbol_type: SymbolType::Function,
+                public: true,
+                doc: None,
+            }],
+            vec![],
+        );
 
         match result {
-            Ok(_) => {
-                match registry.get_module("contracts::token") {
-                    Ok(module) => assert_eq!(module.name, "token"),
-                    Err(e) => panic!("Failed to get module: {}", e),
-                }
-            }
+            Ok(_) => match registry.get_module("contracts::token") {
+                Ok(module) => assert_eq!(module.name, "token"),
+                Err(e) => panic!("Failed to get module: {}", e),
+            },
             Err(e) => panic!("Failed to register module: {}", e),
         }
     }

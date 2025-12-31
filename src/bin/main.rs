@@ -1,6 +1,6 @@
 //! Slvr REPL and CLI tool
 
-use silver_slvr::{Lexer, Parser, VERSION, LANGUAGE_NAME};
+use silver_slvr::{Lexer, Parser, LANGUAGE_NAME, VERSION};
 use std::io::{self, Write};
 
 fn main() {
@@ -43,7 +43,7 @@ fn execute_command(input: &str) -> Result<String, String> {
     // Tokenize
     let mut lexer = Lexer::new(input);
     let tokens = lexer.tokenize().map_err(|e| e.to_string())?;
-    
+
     // Parse
     let mut parser = Parser::new(input).map_err(|e| e.to_string())?;
     let _program = parser.parse().map_err(|e| e.to_string())?;

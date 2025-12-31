@@ -18,7 +18,7 @@ pub enum Instruction {
     PushNull,
     Pop,
     Dup,
-    
+
     // Arithmetic operations
     Add,
     Subtract,
@@ -27,7 +27,7 @@ pub enum Instruction {
     Modulo,
     Power,
     Negate,
-    
+
     // Comparison operations
     Equal,
     NotEqual,
@@ -35,30 +35,30 @@ pub enum Instruction {
     LessEqual,
     Greater,
     GreaterEqual,
-    
+
     // Logical operations
     And,
     Or,
     Not,
-    
+
     // String operations
     Concat,
-    
+
     // Control flow
     Jump(usize),
     JumpIfFalse(usize),
     JumpIfTrue(usize),
     Return,
-    
+
     // Variable operations
     LoadLocal(usize),
     StoreLocal(usize),
     LoadGlobal(String),
     StoreGlobal(String),
-    
+
     // Function operations
     Call(String, usize), // function name, arg count
-    
+
     // Collection operations
     MakeList(usize),
     MakeObject(usize),
@@ -66,20 +66,20 @@ pub enum Instruction {
     GetIndex,
     SetField(String),
     SetIndex,
-    
+
     // Database operations
     Read(String),
     Write(String),
     Update(String, usize), // table name, field count
     Delete(String),
-    
+
     // Type operations
     TypeOf,
     Cast(Type),
-    
+
     // Error handling
     Throw(String),
-    
+
     // Fuel operations
     ConsumeFuel(u64),
 }
@@ -230,7 +230,7 @@ mod tests {
         let mut bytecode = Bytecode::new();
         bytecode.push(Instruction::PushInt(42));
         bytecode.push(Instruction::Return);
-        
+
         assert_eq!(bytecode.len(), 2);
         assert!(matches!(bytecode.get(0), Some(Instruction::PushInt(42))));
     }
@@ -239,10 +239,10 @@ mod tests {
     fn test_bytecode_extend() {
         let mut bytecode1 = Bytecode::new();
         bytecode1.push(Instruction::PushInt(1));
-        
+
         let mut bytecode2 = Bytecode::new();
         bytecode2.push(Instruction::PushInt(2));
-        
+
         bytecode1.extend(bytecode2);
         assert_eq!(bytecode1.len(), 2);
     }
@@ -251,7 +251,7 @@ mod tests {
     fn test_instruction_display() {
         let instr = Instruction::PushInt(42);
         assert_eq!(instr.to_string(), "PUSH_INT 42");
-        
+
         let instr = Instruction::Call("add".to_string(), 2);
         assert_eq!(instr.to_string(), "CALL add (2)");
     }
@@ -261,7 +261,7 @@ mod tests {
         let mut bytecode = Bytecode::new();
         bytecode.push(Instruction::PushInt(42));
         bytecode.push(Instruction::Return);
-        
+
         let disasm = bytecode.disassemble();
         assert!(disasm.contains("PUSH_INT 42"));
         assert!(disasm.contains("RET"));

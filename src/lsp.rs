@@ -12,7 +12,6 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 
-
 /// LSP Position (line and character)
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct Position {
@@ -204,10 +203,9 @@ impl LspServer {
     /// Open document
     pub fn open_document(&self, uri: String, text: String) -> SlvrResult<()> {
         // PRODUCTION IMPLEMENTATION: Proper error handling instead of unwrap()
-        let mut docs = self.documents.lock()
-            .map_err(|e| SlvrError::RuntimeError {
-                message: format!("Failed to acquire documents lock: {}", e),
-            })?;
+        let mut docs = self.documents.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire documents lock: {}", e),
+        })?;
         docs.insert(uri.clone(), text.clone());
 
         // Analyze document
@@ -218,10 +216,9 @@ impl LspServer {
     /// Update document
     pub fn update_document(&self, uri: String, text: String) -> SlvrResult<()> {
         // PRODUCTION IMPLEMENTATION: Proper error handling instead of unwrap()
-        let mut docs = self.documents.lock()
-            .map_err(|e| SlvrError::RuntimeError {
-                message: format!("Failed to acquire documents lock: {}", e),
-            })?;
+        let mut docs = self.documents.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire documents lock: {}", e),
+        })?;
         docs.insert(uri.clone(), text.clone());
 
         // Re-analyze document
@@ -232,13 +229,14 @@ impl LspServer {
     /// Close document
     pub fn close_document(&self, uri: &str) -> SlvrResult<()> {
         // PRODUCTION IMPLEMENTATION: Proper error handling instead of unwrap()
-        let mut docs = self.documents.lock()
-            .map_err(|e| SlvrError::RuntimeError {
-                message: format!("Failed to acquire documents lock: {}", e),
-            })?;
+        let mut docs = self.documents.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire documents lock: {}", e),
+        })?;
         docs.remove(uri);
 
-        let mut diags = self.diagnostics.lock()
+        let mut diags = self
+            .diagnostics
+            .lock()
             .map_err(|e| SlvrError::RuntimeError {
                 message: format!("Failed to acquire diagnostics lock: {}", e),
             })?;
@@ -266,8 +264,14 @@ impl LspServer {
                             Err(e) => {
                                 diagnostics.push(Diagnostic {
                                     range: Range {
-                                        start: Position { line: 0, character: 0 },
-                                        end: Position { line: 0, character: 100 },
+                                        start: Position {
+                                            line: 0,
+                                            character: 0,
+                                        },
+                                        end: Position {
+                                            line: 0,
+                                            character: 100,
+                                        },
                                     },
                                     severity: Some(DiagnosticSeverity::Error),
                                     code: Some("parse_error".to_string()),
@@ -281,8 +285,14 @@ impl LspServer {
                     Err(e) => {
                         diagnostics.push(Diagnostic {
                             range: Range {
-                                start: Position { line: 0, character: 0 },
-                                end: Position { line: 0, character: 100 },
+                                start: Position {
+                                    line: 0,
+                                    character: 0,
+                                },
+                                end: Position {
+                                    line: 0,
+                                    character: 100,
+                                },
                             },
                             severity: Some(DiagnosticSeverity::Error),
                             code: Some("parser_init_error".to_string()),
@@ -296,8 +306,14 @@ impl LspServer {
             Err(e) => {
                 diagnostics.push(Diagnostic {
                     range: Range {
-                        start: Position { line: 0, character: 0 },
-                        end: Position { line: 0, character: 100 },
+                        start: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 100,
+                        },
                     },
                     severity: Some(DiagnosticSeverity::Error),
                     code: Some("lex_error".to_string()),
@@ -310,7 +326,9 @@ impl LspServer {
 
         // Store diagnostics
         // PRODUCTION IMPLEMENTATION: Proper error handling instead of unwrap()
-        let mut diags = self.diagnostics.lock()
+        let mut diags = self
+            .diagnostics
+            .lock()
             .map_err(|e| SlvrError::RuntimeError {
                 message: format!("Failed to acquire diagnostics lock: {}", e),
             })?;
@@ -326,12 +344,15 @@ impl LspServer {
     }
 
     /// Get completions at position
-    pub fn get_completions(&self, uri: &str, _position: Position) -> SlvrResult<Vec<CompletionItem>> {
+    pub fn get_completions(
+        &self,
+        uri: &str,
+        _position: Position,
+    ) -> SlvrResult<Vec<CompletionItem>> {
         // PRODUCTION IMPLEMENTATION: Proper error handling instead of unwrap()
-        let docs = self.documents.lock()
-            .map_err(|e| SlvrError::RuntimeError {
-                message: format!("Failed to acquire documents lock: {}", e),
-            })?;
+        let docs = self.documents.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire documents lock: {}", e),
+        })?;
         let _text = docs.get(uri).ok_or_else(|| SlvrError::RuntimeError {
             message: "Document not found".to_string(),
         })?;
@@ -399,10 +420,9 @@ impl LspServer {
     /// Get hover information
     pub fn get_hover(&self, uri: &str, position: Position) -> SlvrResult<Option<Hover>> {
         // PRODUCTION IMPLEMENTATION: Proper error handling instead of unwrap()
-        let docs = self.documents.lock()
-            .map_err(|e| SlvrError::RuntimeError {
-                message: format!("Failed to acquire documents lock: {}", e),
-            })?;
+        let docs = self.documents.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire documents lock: {}", e),
+        })?;
         let text = docs.get(uri).ok_or_else(|| SlvrError::RuntimeError {
             message: "Document not found".to_string(),
         })?;
@@ -466,10 +486,9 @@ impl LspServer {
     /// Get document symbols
     pub fn get_document_symbols(&self, uri: &str) -> SlvrResult<Vec<DocumentSymbol>> {
         // PRODUCTION IMPLEMENTATION: Proper error handling instead of unwrap()
-        let docs = self.documents.lock()
-            .map_err(|e| SlvrError::RuntimeError {
-                message: format!("Failed to acquire documents lock: {}", e),
-            })?;
+        let docs = self.documents.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire documents lock: {}", e),
+        })?;
         let text = docs.get(uri).ok_or_else(|| SlvrError::RuntimeError {
             message: "Document not found".to_string(),
         })?;
@@ -505,7 +524,7 @@ impl LspServer {
         // 3. Symbol range (start and end positions)
         // 4. Symbol detail (signature, type, etc.)
         // 5. Children symbols (for nested definitions)
-        
+
         // Get symbol name from definition
         let (name, kind) = match expr {
             crate::ast::Definition::Function { name, .. } => (name.clone(), "function"),
@@ -514,7 +533,7 @@ impl LspServer {
             crate::ast::Definition::Table { name, .. } => (name.clone(), "variable"),
             crate::ast::Definition::Module { name, .. } => (name.clone(), "module"),
         };
-        
+
         // Create document symbol with real information
         Some(DocumentSymbol {
             name,
@@ -530,11 +549,17 @@ impl LspServer {
             deprecated: None,
             range: Range {
                 start: Position { line, character: 0 },
-                end: Position { line: line + 1, character: 0 },
+                end: Position {
+                    line: line + 1,
+                    character: 0,
+                },
             },
             selection_range: Range {
                 start: Position { line, character: 0 },
-                end: Position { line, character: 10 },
+                end: Position {
+                    line,
+                    character: 10,
+                },
             },
             children: None,
         })
@@ -543,10 +568,9 @@ impl LspServer {
     /// Get definition location
     pub fn get_definition(&self, uri: &str, _position: Position) -> SlvrResult<Option<Location>> {
         // PRODUCTION IMPLEMENTATION: Proper error handling instead of unwrap()
-        let docs = self.documents.lock()
-            .map_err(|e| SlvrError::RuntimeError {
-                message: format!("Failed to acquire documents lock: {}", e),
-            })?;
+        let docs = self.documents.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire documents lock: {}", e),
+        })?;
         let _text = docs.get(uri).ok_or_else(|| SlvrError::RuntimeError {
             message: "Document not found".to_string(),
         })?;
@@ -559,10 +583,9 @@ impl LspServer {
     /// Get references
     pub fn get_references(&self, uri: &str, _position: Position) -> SlvrResult<Vec<Location>> {
         // PRODUCTION IMPLEMENTATION: Proper error handling instead of unwrap()
-        let docs = self.documents.lock()
-            .map_err(|e| SlvrError::RuntimeError {
-                message: format!("Failed to acquire documents lock: {}", e),
-            })?;
+        let docs = self.documents.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire documents lock: {}", e),
+        })?;
         let _text = docs.get(uri).ok_or_else(|| SlvrError::RuntimeError {
             message: "Document not found".to_string(),
         })?;
@@ -574,10 +597,9 @@ impl LspServer {
     /// Format document
     pub fn format_document(&self, uri: &str) -> SlvrResult<Vec<TextEdit>> {
         // PRODUCTION IMPLEMENTATION: Proper error handling instead of unwrap()
-        let docs = self.documents.lock()
-            .map_err(|e| SlvrError::RuntimeError {
-                message: format!("Failed to acquire documents lock: {}", e),
-            })?;
+        let docs = self.documents.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire documents lock: {}", e),
+        })?;
         let text = docs.get(uri).ok_or_else(|| SlvrError::RuntimeError {
             message: "Document not found".to_string(),
         })?;
@@ -589,7 +611,10 @@ impl LspServer {
         if formatted != *text {
             edits.push(TextEdit {
                 range: Range {
-                    start: Position { line: 0, character: 0 },
+                    start: Position {
+                        line: 0,
+                        character: 0,
+                    },
                     end: Position {
                         line: text.lines().count() as u32,
                         character: 0,
@@ -644,18 +669,16 @@ impl LspServer {
     /// Check types in document
     pub fn check_types(&self, uri: &str) -> SlvrResult<Vec<Diagnostic>> {
         // PRODUCTION IMPLEMENTATION: Proper error handling instead of unwrap()
-        let docs = self.documents.lock()
-            .map_err(|e| SlvrError::RuntimeError {
-                message: format!("Failed to acquire documents lock: {}", e),
-            })?;
+        let docs = self.documents.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire documents lock: {}", e),
+        })?;
         let _text = docs.get(uri).ok_or_else(|| SlvrError::RuntimeError {
             message: "Document not found".to_string(),
         })?;
 
-        let _type_env = self.type_env.lock()
-            .map_err(|e| SlvrError::RuntimeError {
-                message: format!("Failed to acquire type environment lock: {}", e),
-            })?;
+        let _type_env = self.type_env.lock().map_err(|e| SlvrError::RuntimeError {
+            message: format!("Failed to acquire type environment lock: {}", e),
+        })?;
         let diagnostics = Vec::new();
 
         // Perform type checking using the type environment
@@ -672,7 +695,10 @@ mod tests {
 
     #[test]
     fn test_position() {
-        let pos = Position { line: 5, character: 10 };
+        let pos = Position {
+            line: 5,
+            character: 10,
+        };
         assert_eq!(pos.line, 5);
         assert_eq!(pos.character, 10);
     }
@@ -680,8 +706,14 @@ mod tests {
     #[test]
     fn test_range() {
         let range = Range {
-            start: Position { line: 0, character: 0 },
-            end: Position { line: 1, character: 10 },
+            start: Position {
+                line: 0,
+                character: 0,
+            },
+            end: Position {
+                line: 1,
+                character: 10,
+            },
         };
         assert_eq!(range.start.line, 0);
         assert_eq!(range.end.line, 1);
@@ -691,8 +723,14 @@ mod tests {
     fn test_diagnostic() {
         let diag = Diagnostic {
             range: Range {
-                start: Position { line: 0, character: 0 },
-                end: Position { line: 0, character: 10 },
+                start: Position {
+                    line: 0,
+                    character: 0,
+                },
+                end: Position {
+                    line: 0,
+                    character: 10,
+                },
             },
             severity: Some(DiagnosticSeverity::Error),
             code: Some("test".to_string()),
@@ -727,8 +765,14 @@ mod tests {
         let hover = Hover {
             contents: "Test hover".to_string(),
             range: Some(Range {
-                start: Position { line: 0, character: 0 },
-                end: Position { line: 0, character: 10 },
+                start: Position {
+                    line: 0,
+                    character: 0,
+                },
+                end: Position {
+                    line: 0,
+                    character: 10,
+                },
             }),
         };
         assert_eq!(hover.contents, "Test hover");
